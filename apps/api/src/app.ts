@@ -5,9 +5,12 @@ import Fastify, { type FastifyServerOptions } from 'fastify';
 import { ZodError } from 'zod';
 import { AgentHub } from './agents/hub';
 import { prisma } from './db';
+import { CheckoutError } from './menu/pricing';
 import { env } from './env';
 import { agentRoutes } from './routes/agents';
 import { authRoutes } from './routes/auth';
+import { menuRoutes } from './routes/menu';
+import { publicRoutes } from './routes/public';
 import { restaurantRoutes } from './routes/restaurants';
 
 export async function buildApp(opts: FastifyServerOptions = {}) {
@@ -20,6 +23,9 @@ export async function buildApp(opts: FastifyServerOptions = {}) {
         error: 'Dados inválidos',
         issues: error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
       });
+    }
+    if (error instanceof CheckoutError) {
+      return reply.code(422).send({ error: error.message });
     }
     const statusCode = (error as { statusCode?: number }).statusCode;
     if (statusCode && statusCode < 500) return reply.send(error);
@@ -43,6 +49,8 @@ export async function buildApp(opts: FastifyServerOptions = {}) {
 
   await app.register(authRoutes);
   await app.register(restaurantRoutes, { hub });
+  await app.register(menuRoutes);
+  await app.register(publicRoutes, { hub });
   await app.register(agentRoutes, { hub });
 
   app.addHook('onClose', async () => {

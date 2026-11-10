@@ -20,6 +20,8 @@ model Restaurant {
   agents       Agent[]
   pairingCodes PairingCode[]
   memberships  Membership[]
+  categories   Category[]
+  products     Product[]
 }
 
 model User {
@@ -139,4 +141,71 @@ model PrintJob {
   order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([restaurantId, status])
+}
+
+// ---------- Cardápio ----------
+
+model Category {
+  id           String   @id @default(uuid())
+  restaurantId String
+  name         String
+  position     Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  products   Product[]
+
+  @@index([restaurantId, position])
+}
+
+model Product {
+  id           String   @id @default(uuid())
+  restaurantId String
+  categoryId   String
+  name         String
+  description  String?
+  priceCents   Int
+  /// Setor de produção: decide em qual impressora o item sai (cozinha, bar...).
+  sector       String   @default("cozinha")
+  position     Int      @default(0)
+  /// Desativado = não aparece no cardápio público (ex.: acabou o estoque).
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  optionGroups OptionGroup[]
+
+  @@index([restaurantId, categoryId, position])
+}
+
+/// Grupo de complementos de um produto, ex.: "Escolha o ponto" (mín 1, máx 1)
+/// ou "Adicionais" (mín 0, máx 5).
+model OptionGroup {
+  id        String @id @default(uuid())
+  productId String
+  name      String
+  minSelect Int    @default(0)
+  maxSelect Int    @default(1)
+  position  Int    @default(0)
+
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  options Option[]
+
+  @@index([productId, position])
+}
+
+model Option {
+  id         String  @id @default(uuid())
+  groupId    String
+  name       String
+  priceCents Int     @default(0)
+  position   Int     @default(0)
+  active     Boolean @default(true)
+
+  group OptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, position])
 }

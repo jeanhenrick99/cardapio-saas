@@ -7,6 +7,7 @@ import { after, before, describe, it } from 'node:test';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../app';
 import { prisma } from '../db';
+import { auth, createSimpleProduct, newOwnerData, signup as signupWith, tableOrder } from '../test/helpers';
 
 let app: FastifyInstance;
 
@@ -17,25 +18,8 @@ after(async () => {
   await app.close();
 });
 
-let seq = 0;
-function newOwner() {
-  seq++;
-  return {
-    name: `Dono ${seq}`,
-    email: `dono${seq}-${Date.now()}@teste.dev`,
-    password: 'senha-segura-123',
-    restaurant: { name: `Restaurante ${seq}`, slug: `rest-${seq}-${Date.now()}` },
-  };
-}
-
-async function signup(data = newOwner()) {
-  const res = await app.inject({ method: 'POST', url: '/auth/signup', payload: data });
-  assert.equal(res.statusCode, 201, res.body);
-  const body = res.json<{ token: string; user: { id: string } }>();
-  return { ...data, token: body.token, userId: body.user.id, res };
-}
-
-const auth = (token: string) => ({ authorization: `Bearer ${token}` });
+const signup = (data?: ReturnType<typeof newOwnerData>) => signupWith(app, data);
+const newOwner = newOwnerData;
 
 describe('cadastro e login', () => {
   it('cadastro cria o dono, o restaurante e já abre uma sessão em cookie seguro', async () => {
@@ -152,7 +136,13 @@ describe('permissões por restaurante', () => {
     const restaurant = await prisma.restaurant.findUniqueOrThrow({ where: { slug: owner.restaurant.slug } });
     await prisma.membership.create({ data: { userId: staff.userId, restaurantId: restaurant.id, role: 'STAFF' } });
 
-    const order = await app.inject({ method: 'POST', url: `/restaurants/${owner.restaurant.slug}/orders`, headers: auth(staff.token) });
+    const productId = await createSimpleProduct(app, owner);
+    const order = await app.inject({
+      method: 'POST',
+      url: `/restaurants/${owner.restaurant.slug}/orders`,
+      headers: auth(staff.token),
+      payload: tableOrder(productId),
+    });
     assert.equal(order.statusCode, 201);
 
     const pairing = await app.inject({ method: 'POST', url: `/restaurants/${owner.restaurant.slug}/pairing-codes`, headers: auth(staff.token) });
@@ -161,9 +151,15 @@ describe('permissões por restaurante', () => {
 
   it('pedidos são numerados por restaurante e ficam na fila sem agente', async () => {
     const owner = await signup();
+    const productId = await createSimpleProduct(app, owner);
     const numbers: number[] = [];
     for (let i = 0; i < 3; i++) {
-      const res = await app.inject({ method: 'POST', url: `/restaurants/${owner.restaurant.slug}/orders`, headers: auth(owner.token) });
+      const res = await app.inject({
+        method: 'POST',
+        url: `/restaurants/${owner.restaurant.slug}/orders`,
+        headers: auth(owner.token),
+        payload: tableOrder(productId),
+      });
       assert.equal(res.statusCode, 201);
       assert.equal(res.json().printJob.status, 'QUEUED');
       numbers.push(res.json().order.number);
@@ -176,9 +172,15 @@ describe('permissões por restaurante', () => {
 
   it('pedidos simultâneos nunca recebem o mesmo número', async () => {
     const owner = await signup();
+    const productId = await createSimpleProduct(app, owner);
     const results = await Promise.all(
       Array.from({ length: 10 }, () =>
-        app.inject({ method: 'POST', url: `/restaurants/${owner.restaurant.slug}/orders`, headers: auth(owner.token) }),
+        app.inject({
+          method: 'POST',
+          url: `/restaurants/${owner.restaurant.slug}/orders`,
+          headers: auth(owner.token),
+          payload: tableOrder(productId),
+        }),
       ),
     );
     const numbers = results.map((r) => r.json().order.number as number).sort((x, y) => x - y);

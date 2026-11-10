@@ -1,11 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { OrderDraftSchema } from '@cardapio/shared';
+import { CheckoutSchema } from '@cardapio/shared';
 import type { AgentHub } from '../agents/hub';
 import { generatePairingCode, hashToken } from '../auth/tokens';
 import { prisma } from '../db';
-import { createOrder } from '../orders/service';
-import { sampleOrder } from '../sample-orders';
+import { placeOrder } from '../orders/checkout';
 import { loadRestaurantFor, requireUser } from './common';
 import { RestaurantInputSchema } from './schemas';
 
@@ -28,15 +27,14 @@ export async function restaurantRoutes(app: FastifyInstance, { hub }: { hub: Age
     return reply.code(201).send(restaurant);
   });
 
-  /** Cria um pedido. Sem corpo, gera um pedido aleatório (útil para testes). */
+  /** Pedido lançado pela equipe (balcão, telefone). Preços vêm do cardápio, como no pedido público. */
   app.post('/restaurants/:slug/orders', async (request, reply) => {
     const { slug } = SlugParams.parse(request.params);
     const restaurant = await loadRestaurantFor(request, reply, slug);
     if (!restaurant) return;
 
-    const draft = OrderDraftSchema.parse(request.body ?? sampleOrder());
-    const { order, job } = await createOrder(prisma, restaurant.id, draft);
-    const sent = await hub.dispatch(job.id);
+    const checkout = CheckoutSchema.parse(request.body);
+    const { order, job, sent } = await placeOrder(prisma, hub, restaurant.id, checkout);
     request.log.info({ orderNumber: order.number, jobId: job.id, sent }, sent ? 'Pedido enviado ao agente' : 'Pedido na fila: agente offline');
     return reply.code(201).send({ order, printJob: { id: job.id, status: sent ? 'SENT' : 'QUEUED' } });
   });

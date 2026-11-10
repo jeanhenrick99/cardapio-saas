@@ -2,7 +2,7 @@
 
 Plataforma de cardápio digital e pedidos para restaurantes, com **impressão automática na cozinha** via um agente local que fala ESC/POS direto com as impressoras térmicas.
 
-> 🚧 Em desenvolvimento. Já funciona: API multi-restaurante com PostgreSQL, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
+> 🚧 Em desenvolvimento. Já funciona: API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
 
 ## Como funciona
 
@@ -45,7 +45,7 @@ npm install
 cp apps/api/.env.example apps/api/.env
 ```
 
-Suba o PostgreSQL, crie as tabelas e os dados de demonstração (restaurante `demo` e o usuário `demo@cardapio.dev` / senha `demo12345`):
+Suba o PostgreSQL, crie as tabelas e os dados de demonstração (restaurante `demo` com um cardápio de 11 produtos, e o usuário `demo@cardapio.dev` / senha `demo12345`):
 
 ```bash
 npm run db:up
@@ -85,7 +85,7 @@ Em outro terminal, suba o agente:
 npm run dev:agent
 ```
 
-Agora crie pedidos e veja os cupons saindo no terminal do agente (e em `apps/print-agent/output/`):
+Agora faça pedidos como um cliente faria: o script lê o cardápio público, monta um carrinho aleatório respeitando as regras dos complementos e envia. Os cupons aparecem no terminal do agente (e em `apps/print-agent/output/`):
 
 ```bash
 npm run order
@@ -98,7 +98,7 @@ npm run order
 | `npm run db:up` / `db:down` | Sobe/derruba o PostgreSQL no Docker |
 | `npm run db:migrate` | Aplica as migrations do Prisma |
 | `npm run db:studio` | Abre o Prisma Studio para ver os dados |
-| `npm run order` | Cria um pedido aleatório no restaurante `demo` |
+| `npm run order` | Faz um pedido aleatório pelo cardápio público do restaurante `demo` |
 | `npm run pairing-code` | Gera um código de pareamento para o restaurante `demo` |
 | `npm run pair -- CODIGO` | Pareia o agente (use `--force` para parear de novo) |
 | `npm run test-print` | Imprime um cupom de teste em todas as impressoras, sem servidor |
@@ -118,7 +118,13 @@ A sessão vai num cookie `httpOnly` (navegador) ou no header `Authorization: Bea
 | `POST` | `/auth/logout` | logado | Encerra a sessão |
 | `GET` | `/auth/me` | logado | Usuário e restaurantes dos quais é membro |
 | `POST` | `/restaurants` | logado | Cria mais um restaurante (o usuário vira dono) |
-| `POST` | `/restaurants/:slug/orders` | membro | Cria um pedido e o envia para impressão (sem corpo = pedido aleatório) |
+| `GET` | `/public/restaurants/:slug/menu` | público | Cardápio para o cliente (só itens ativos) |
+| `POST` | `/public/restaurants/:slug/orders` | público | Pedido do cliente: envia só IDs e quantidades, o servidor calcula o total |
+| `GET` | `/restaurants/:slug/menu` | membro | Cardápio completo, incluindo itens desativados |
+| `POST` / `PATCH` / `DELETE` | `/restaurants/:slug/categories[/:id]` | dono | Gerencia categorias |
+| `POST` / `PUT` / `DELETE` | `/restaurants/:slug/products[/:id]` | dono | Gerencia produtos e seus complementos |
+| `PATCH` | `/restaurants/:slug/products/:id/availability` | membro | Marca como esgotado ou disponível |
+| `POST` | `/restaurants/:slug/orders` | membro | Pedido lançado pela equipe (balcão, telefone), com preços do cardápio |
 | `GET` | `/restaurants/:slug/print-jobs` | membro | Últimos 50 jobs com o resultado por impressora |
 | `GET` | `/restaurants/:slug/agents` | membro | Agentes pareados e se estão online |
 | `POST` | `/restaurants/:slug/pairing-codes` | dono | Gera um código de pareamento |
@@ -133,10 +139,16 @@ TOKEN=$(curl -s -X POST localhost:8080/auth/login -H 'content-type: application/
 ```
 
 ```bash
-curl -X POST -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/orders
+curl -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/menu
 ```
 
 ## Decisões técnicas
+
+**O cliente nunca define o preço.** O carrinho envia só `productId`, `quantity` e `optionIds`. O servidor busca os preços no banco (sempre filtrando pelo restaurante do pedido) e valida as regras de cada grupo de complementos: mínimo e máximo de escolhas, opção desativada, opção de outro produto. A regra fica em uma função pura ([`menu/pricing.ts`](apps/api/src/menu/pricing.ts)), testada sem banco. Erros de regra de negócio voltam como **422** com uma mensagem que o cliente entende ("escolha pelo menos 1 em Ponto da carne").
+
+**Complementos flexíveis.** Um produto tem grupos com mínimo e máximo de escolhas, o que cobre os casos reais: "ponto da carne" (exatamente 1), "adicionais" (0 a 4), "pizza meio a meio" (1 a 2 sabores). Um produto cujo grupo obrigatório ficou sem opções disponíveis some do cardápio público, porque seria impossível pedi-lo.
+
+**Histórico preservado.** O pedido guarda uma cópia do que foi pedido (nome, preço, complementos). Editar ou apagar um produto não altera pedidos antigos.
 
 **Garantia de entrega sem duplicidade.** Cada pedido gera um `print_job` no banco, na mesma transação. O servidor reenvia tudo que está `QUEUED`/`SENT` quando o agente conecta; o agente grava o job no SQLite *antes* de imprimir e ignora `jobId` repetido (só reenvia a confirmação). Resultado: entrega *at-least-once* com impressão *exactly-once*.
 
@@ -210,8 +222,11 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [x] API com PostgreSQL, multi-restaurante
 - [x] Pareamento do agente por código e revogação
 - [x] Cadastro, login e papéis (dono/funcionário)
+- [x] Cardápio com categorias, produtos e complementos
+- [x] Pedido público com preço calculado no servidor
 - [ ] Convite de funcionários por e-mail
-- [ ] Cadastro do cardápio (categorias, produtos, complementos)
+- [ ] Fotos dos produtos
+- [ ] Taxa de entrega por bairro e horário de funcionamento
 - [ ] Painel do restaurante com status das impressoras em tempo real
 - [ ] Cardápio do cliente com QR Code na mesa
 - [ ] Painel da cozinha (KDS)

@@ -2,6 +2,7 @@
 import { hashPassword } from '../auth/password';
 import { prisma } from '../db';
 import { DEMO_RESTAURANT, DEMO_USER } from './demo';
+import { DEMO_MENU } from './demo-menu';
 
 const restaurant = await prisma.restaurant.upsert({
   where: { slug: DEMO_RESTAURANT.slug },
@@ -20,6 +21,39 @@ await prisma.membership.upsert({
   update: {},
   create: { userId: user.id, restaurantId: restaurant.id, role: 'OWNER' },
 });
+
+// Cardápio: só cria se o restaurante ainda não tiver nenhuma categoria.
+if ((await prisma.category.count({ where: { restaurantId: restaurant.id } })) === 0) {
+  for (const [ci, category] of DEMO_MENU.entries()) {
+    await prisma.category.create({
+      data: {
+        restaurantId: restaurant.id,
+        name: category.name,
+        position: ci,
+        products: {
+          create: category.products.map((p, pi) => ({
+            restaurantId: restaurant.id,
+            name: p.name,
+            description: p.description,
+            priceCents: p.priceCents,
+            sector: p.sector,
+            position: pi,
+            optionGroups: {
+              create: (p.optionGroups ?? []).map((g, gi) => ({
+                name: g.name,
+                minSelect: g.minSelect,
+                maxSelect: g.maxSelect,
+                position: gi,
+                options: { create: g.options.map((o, oi) => ({ name: o.name, priceCents: o.priceCents ?? 0, position: oi })) },
+              })),
+            },
+          })),
+        },
+      },
+    });
+  }
+  console.log(`✔ Cardápio de demonstração com ${DEMO_MENU.reduce((n, c) => n + c.products.length, 0)} produtos`);
+}
 
 console.log(`✔ Restaurante "${restaurant.name}" (slug: ${restaurant.slug})`);
 console.log(`✔ Usuário ${DEMO_USER.email} / senha ${DEMO_USER.password} (dono do restaurante)`);
