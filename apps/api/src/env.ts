@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 // Carrega o .env com o recurso nativo do Node (sem dotenv).
+// Variáveis já definidas no ambiente têm prioridade sobre o arquivo.
 try {
   process.loadEnvFile();
 } catch {
@@ -8,11 +9,11 @@ try {
 }
 
 const EnvSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DATABASE_URL: z.string().url(),
   PORT: z.coerce.number().int().default(8080),
   HOST: z.string().default('0.0.0.0'),
-  ADMIN_TOKEN: z.string().min(8, 'ADMIN_TOKEN precisa de pelo menos 8 caracteres'),
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 });
 
 const parsed = EnvSchema.safeParse(process.env);
@@ -22,4 +23,4 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
-export type Env = typeof env;
+export const isProduction = env.NODE_ENV === 'production';

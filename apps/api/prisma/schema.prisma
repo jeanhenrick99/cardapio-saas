@@ -19,6 +19,53 @@ model Restaurant {
   printJobs    PrintJob[]
   agents       Agent[]
   pairingCodes PairingCode[]
+  memberships  Membership[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  /// Sempre salvo em minúsculas.
+  email        String   @unique
+  name         String
+  /// Formato: scrypt$N$r$p$salt$hash
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  sessions    Session[]
+  memberships Membership[]
+}
+
+/// Sessão de login. Como nos agentes, guardamos só o hash do token.
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum Role {
+  OWNER
+  STAFF
+}
+
+/// Liga usuários a restaurantes: um usuário pode ter vários restaurantes e vice-versa.
+model Membership {
+  userId       String
+  restaurantId String
+  role         Role     @default(STAFF)
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([userId, restaurantId])
+  @@index([restaurantId])
 }
 
 /// Um agente de impressão instalado em um PC do restaurante.

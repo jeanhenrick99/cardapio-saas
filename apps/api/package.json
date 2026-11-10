@@ -14,10 +14,13 @@
     "order": "tsx src/scripts/create-order.ts",
     "postinstall": "prisma generate",
     "test": "tsx --test \"src/**/*.test.ts\"",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "pairing-code": "tsx src/scripts/pairing-code.ts",
+    "test:integration": "DATABASE_URL=\"postgresql://cardapio:cardapio@localhost:5432/cardapio_test?schema=public\" prisma migrate deploy > /dev/null && DATABASE_URL=\"postgresql://cardapio:cardapio@localhost:5432/cardapio_test?schema=public\" NODE_ENV=test LOG_LEVEL=silent tsx --test --test-concurrency=1 \"src/**/*.itest.ts\""
   },
   "dependencies": {
     "@cardapio/shared": "*",
+    "@fastify/cookie": "^11.1.5",
     "@fastify/rate-limit": "^10.2.0",
     "@fastify/websocket": "^11.0.0",
     "@prisma/client": "^6.19.0",

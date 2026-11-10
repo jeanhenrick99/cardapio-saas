@@ -16,8 +16,10 @@
     "dev:agent": "npm run dev -w @cardapio/print-agent",
     "pair": "npm run pair -w @cardapio/print-agent --",
     "order": "npm run order -w @cardapio/api --",
+    "pairing-code": "npm run pairing-code -w @cardapio/api --",
     "test-print": "npm run test-print -w @cardapio/print-agent",
     "test": "npm test --workspaces --if-present",
+    "test:integration": "npm run test:integration -w @cardapio/api",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "engines": {

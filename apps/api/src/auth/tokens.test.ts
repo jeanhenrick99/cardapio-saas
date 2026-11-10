@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { generateAgentToken, generatePairingCode, hashToken, normalizePairingCode, safeEqual } from './tokens';
+import { generateAgentToken, generatePairingCode, hashToken, normalizePairingCode } from './tokens';
 
 describe('tokens', () => {
   it('gera tokens únicos com prefixo', () => {
@@ -15,12 +15,6 @@ describe('tokens', () => {
     assert.equal(hashToken(token), hashToken(token));
     assert.match(hashToken(token), /^[0-9a-f]{64}$/);
     assert.ok(!hashToken(token).includes(token));
-  });
-
-  it('safeEqual compara corretamente', () => {
-    assert.ok(safeEqual('dev-admin', 'dev-admin'));
-    assert.ok(!safeEqual('dev-admin', 'dev-admim'));
-    assert.ok(!safeEqual('a', 'abc'));
   });
 });
 

@@ -2,7 +2,7 @@
 
 Plataforma de cardápio digital e pedidos para restaurantes, com **impressão automática na cozinha** via um agente local que fala ESC/POS direto com as impressoras térmicas.
 
-> 🚧 Em desenvolvimento. Já funciona: API multi-restaurante com PostgreSQL, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
+> 🚧 Em desenvolvimento. Já funciona: API multi-restaurante com PostgreSQL, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
 
 ## Como funciona
 
@@ -45,7 +45,7 @@ npm install
 cp apps/api/.env.example apps/api/.env
 ```
 
-Suba o PostgreSQL, crie as tabelas e o restaurante de demonstração:
+Suba o PostgreSQL, crie as tabelas e os dados de demonstração (restaurante `demo` e o usuário `demo@cardapio.dev` / senha `demo12345`):
 
 ```bash
 npm run db:up
@@ -67,10 +67,10 @@ npm run dev:api
 
 ### Pareando o agente
 
-Gere um código de pareamento para o restaurante `demo` (vale por 10 minutos e só pode ser usado uma vez):
+Gere um código de pareamento para o restaurante `demo` (vale por 10 minutos e só pode ser usado uma vez). O script faz login com o usuário demo:
 
 ```bash
-curl -X POST -H "authorization: Bearer dev-admin" localhost:8080/restaurants/demo/pairing-codes
+npm run pairing-code
 ```
 
 Use o código retornado (ex.: `K7P-2QX`) para parear o agente:
@@ -99,26 +99,42 @@ npm run order
 | `npm run db:migrate` | Aplica as migrations do Prisma |
 | `npm run db:studio` | Abre o Prisma Studio para ver os dados |
 | `npm run order` | Cria um pedido aleatório no restaurante `demo` |
+| `npm run pairing-code` | Gera um código de pareamento para o restaurante `demo` |
 | `npm run pair -- CODIGO` | Pareia o agente (use `--force` para parear de novo) |
 | `npm run test-print` | Imprime um cupom de teste em todas as impressoras, sem servidor |
-| `npm test` | Roda os testes (Node test runner) |
+| `npm test` | Testes unitários (Node test runner) |
+| `npm run test:integration` | Testes da API contra um PostgreSQL real (banco `cardapio_test`) |
 | `npm run typecheck` | Checa os tipos de todos os pacotes |
 
 ## API
 
-Rotas em `/restaurants/*` exigem `Authorization: Bearer <ADMIN_TOKEN>` (provisório, até existir login no painel).
+A sessão vai num cookie `httpOnly` (navegador) ou no header `Authorization: Bearer <token>` (scripts, apps, curl). Rotas de restaurante exigem que o usuário seja membro dele; algumas só o dono (**OWNER**) pode usar.
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/health` | Status da API e do banco |
-| `POST` | `/restaurants` | Cria um restaurante (`name`, `slug`) |
-| `POST` | `/restaurants/:slug/orders` | Cria um pedido e o envia para impressão (sem corpo = pedido aleatório) |
-| `GET` | `/restaurants/:slug/print-jobs` | Últimos 50 jobs com o resultado por impressora |
-| `POST` | `/restaurants/:slug/pairing-codes` | Gera um código de pareamento |
-| `GET` | `/restaurants/:slug/agents` | Agentes pareados e se estão online |
-| `DELETE` | `/restaurants/:slug/agents/:id` | Revoga um agente e o desconecta na hora |
-| `POST` | `/agents/pair` | Troca o código por um token (público, com limite de tentativas) |
-| `WS` | `/agent` | Conexão dos agentes |
+| Método | Rota | Acesso | Descrição |
+|---|---|---|---|
+| `GET` | `/health` | público | Status da API e do banco |
+| `POST` | `/auth/signup` | público | Cadastra o dono e o primeiro restaurante, já logado |
+| `POST` | `/auth/login` | público | Login por e-mail e senha (com limite de tentativas) |
+| `POST` | `/auth/logout` | logado | Encerra a sessão |
+| `GET` | `/auth/me` | logado | Usuário e restaurantes dos quais é membro |
+| `POST` | `/restaurants` | logado | Cria mais um restaurante (o usuário vira dono) |
+| `POST` | `/restaurants/:slug/orders` | membro | Cria um pedido e o envia para impressão (sem corpo = pedido aleatório) |
+| `GET` | `/restaurants/:slug/print-jobs` | membro | Últimos 50 jobs com o resultado por impressora |
+| `GET` | `/restaurants/:slug/agents` | membro | Agentes pareados e se estão online |
+| `POST` | `/restaurants/:slug/pairing-codes` | dono | Gera um código de pareamento |
+| `DELETE` | `/restaurants/:slug/agents/:id` | dono | Revoga um agente e o desconecta na hora |
+| `POST` | `/agents/pair` | público | Troca o código por um token (com limite de tentativas) |
+| `WS` | `/agent` | token do agente | Conexão dos agentes |
+
+Exemplo com curl:
+
+```bash
+TOKEN=$(curl -s -X POST localhost:8080/auth/login -H 'content-type: application/json' -d '{"email":"demo@cardapio.dev","password":"demo12345"}' | jq -r .token)
+```
+
+```bash
+curl -X POST -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/orders
+```
 
 ## Decisões técnicas
 
@@ -130,9 +146,15 @@ Rotas em `/restaurants/*` exigem `Authorization: Bearer <ADMIN_TOKEN>` (provisó
 
 **Pareamento por código.** O dono gera um código curto (`K7P-2QX`, sem caracteres ambíguos como 0/O e 1/I), que vale 10 minutos e é consumido de forma atômica. O agente troca o código por um token longo, salvo em `data/credentials.json` com permissão `600`.
 
-**Tokens nunca em texto puro.** O banco guarda só o hash SHA-256 do token do agente e do código de pareamento. Se o banco vazar, as credenciais não vazam. A comparação do token de admin é feita em tempo constante.
+**Senhas com scrypt.** Hash *memory-hard* nativo do Node (sem dependência nativa como bcrypt/argon2), com salt aleatório e os parâmetros salvos junto (`scrypt$N$r$p$salt$hash`), o que permite aumentar o custo no futuro sem invalidar senhas antigas. Quando o e-mail não existe, o login calcula um hash falso: a resposta leva o mesmo tempo, então não dá para descobrir e-mails cadastrados pelo tempo nem pela mensagem.
 
-**Multi-tenant por construção.** O agente autenticado só enxerga e confirma jobs do próprio restaurante: todo `UPDATE` de ACK filtra por `restaurantId`.
+**Sessões no banco, não JWT.** O token da sessão é aleatório e o banco guarda só o hash. Logout e expiração valem na hora, coisa que um JWT sem estado não permite sem uma lista de bloqueio. No navegador, o cookie é `httpOnly` (o JavaScript da página não lê, protegendo contra XSS), `SameSite=Lax` (protege contra CSRF) e `Secure` em produção.
+
+**Tokens nunca em texto puro.** Sessões, tokens de agente e códigos de pareamento são guardados só como hash SHA-256. Se o banco vazar, as credenciais não vazam.
+
+**Multi-tenant por construção.** Usuários se ligam a restaurantes por `Membership` com papel (`OWNER`/`STAFF`). Quem não é membro recebe **404**, não 403, para não revelar quais restaurantes existem. O agente autenticado só enxerga e confirma jobs do próprio restaurante: todo `UPDATE` de ACK filtra por `restaurantId`.
+
+**Testes de integração com banco real.** Os testes sobem a API com `fastify.inject` contra um PostgreSQL de verdade (`cardapio_test`) e cobrem cadastro, login, sessão expirada, força bruta, isolamento entre restaurantes, papéis e numeração de pedidos sob concorrência. Cada teste cria dados únicos, então não é preciso apagar o banco entre execuções.
 
 **Revogação imediata.** Revogar um agente o desconecta na hora; ele para de tentar reconectar e orienta a parear de novo.
 
@@ -187,7 +209,8 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [x] Roteamento por setor
 - [x] API com PostgreSQL, multi-restaurante
 - [x] Pareamento do agente por código e revogação
-- [ ] Login de usuários (dono do restaurante) no lugar do token de admin
+- [x] Cadastro, login e papéis (dono/funcionário)
+- [ ] Convite de funcionários por e-mail
 - [ ] Cadastro do cardápio (categorias, produtos, complementos)
 - [ ] Painel do restaurante com status das impressoras em tempo real
 - [ ] Cardápio do cliente com QR Code na mesa

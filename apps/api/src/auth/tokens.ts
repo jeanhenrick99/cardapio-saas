@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
 
 /** Token longo e aleatório do agente. Só é mostrado uma vez, no pareamento. */
 export function generateAgentToken(): string {
@@ -23,11 +23,4 @@ export function normalizePairingCode(input: string): string | null {
   const raw = input.toUpperCase().replace(/[^0-9A-Z]/g, '');
   if (raw.length !== 6 || [...raw].some((c) => !CODE_ALPHABET.includes(c))) return null;
   return `${raw.slice(0, 3)}-${raw.slice(3)}`;
-}
-
-/** Comparação em tempo constante (evita ataques de timing). */
-export function safeEqual(a: string, b: string): boolean {
-  const ha = createHash('sha256').update(a).digest();
-  const hb = createHash('sha256').update(b).digest();
-  return timingSafeEqual(ha, hb);
 }

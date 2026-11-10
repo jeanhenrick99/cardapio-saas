@@ -1,10 +1,13 @@
+import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import websocket from '@fastify/websocket';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { ZodError } from 'zod';
 import { AgentHub } from './agents/hub';
 import { prisma } from './db';
+import { env } from './env';
 import { agentRoutes } from './routes/agents';
+import { authRoutes } from './routes/auth';
 import { restaurantRoutes } from './routes/restaurants';
 
 export async function buildApp(opts: FastifyServerOptions = {}) {
@@ -24,7 +27,13 @@ export async function buildApp(opts: FastifyServerOptions = {}) {
     return reply.code(500).send({ error: 'Erro interno' });
   });
 
-  await app.register(rateLimit, { global: false });
+  app.decorateRequest('user', null);
+  await app.register(cookie);
+  await app.register(rateLimit, {
+    global: false,
+    // Nos testes, o limite só vale para quem pedir explicitamente (pelo header).
+    allowList: env.NODE_ENV === 'test' ? (req) => !req.headers['x-test-rate-limit'] : undefined,
+  });
   await app.register(websocket);
 
   app.get('/health', async () => {
@@ -32,6 +41,7 @@ export async function buildApp(opts: FastifyServerOptions = {}) {
     return { ok: true };
   });
 
+  await app.register(authRoutes);
   await app.register(restaurantRoutes, { hub });
   await app.register(agentRoutes, { hub });
 
