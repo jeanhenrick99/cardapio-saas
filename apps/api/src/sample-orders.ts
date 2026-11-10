@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { OrderInput } from '@cardapio/shared';
+import type { OrderDraftInput } from '@cardapio/shared';
 
 type MenuItem = { name: string; priceCents: number; sector: string; options?: { group: string; name: string; priceCents: number }[] };
 
@@ -24,7 +24,8 @@ const CUSTOMERS = [
 const pick = <T>(list: readonly T[]): T => list[Math.floor(Math.random() * list.length)]!;
 const chance = (p: number) => Math.random() < p;
 
-export function sampleOrder(number: number): OrderInput {
+/** Gera um pedido aleatório (rascunho: id, número e data vêm do servidor). */
+export function sampleOrder(): OrderDraftInput {
   const type = pick(['mesa', 'mesa', 'delivery', 'retirada'] as const);
   const count = 1 + Math.floor(Math.random() * 4);
   const items = Array.from({ length: count }, () => {
@@ -41,9 +42,6 @@ export function sampleOrder(number: number): OrderInput {
   });
 
   return {
-    id: randomUUID(),
-    number,
-    createdAt: new Date().toISOString(),
     type,
     ...(type === 'mesa' ? { table: String(1 + Math.floor(Math.random() * 20)) } : {}),
     ...(type !== 'mesa' ? { customer: pick(CUSTOMERS) } : {}),

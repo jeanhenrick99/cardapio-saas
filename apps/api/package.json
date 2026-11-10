@@ -3,16 +3,31 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "API do cardápio. Por enquanto: servidor de desenvolvimento que despacha pedidos para o agente de impressão.",
+  "description": "API do cardápio: restaurantes, pedidos, jobs de impressão e conexão com os agentes.",
   "scripts": {
-    "dev": "tsx src/dev-server.ts",
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "tsx src/scripts/seed.ts",
+    "db:studio": "prisma studio",
+    "order": "tsx src/scripts/create-order.ts",
+    "postinstall": "prisma generate",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@cardapio/shared": "*",
-    "ws": "^8.18.0"
+    "@fastify/rate-limit": "^10.2.0",
+    "@fastify/websocket": "^11.0.0",
+    "@prisma/client": "^6.19.0",
+    "fastify": "^5.2.0",
+    "ws": "^8.18.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@types/ws": "^8.5.13"
+    "@types/ws": "^8.5.13",
+    "pino-pretty": "^13.2.0",
+    "prisma": "^6.19.0"
   }
 }

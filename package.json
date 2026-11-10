@@ -7,8 +7,15 @@
     "apps/*"
   ],
   "scripts": {
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run db:migrate -w @cardapio/api",
+    "db:seed": "npm run db:seed -w @cardapio/api",
+    "db:studio": "npm run db:studio -w @cardapio/api",
     "dev:api": "npm run dev -w @cardapio/api",
     "dev:agent": "npm run dev -w @cardapio/print-agent",
+    "pair": "npm run pair -w @cardapio/print-agent --",
+    "order": "npm run order -w @cardapio/api --",
     "test-print": "npm run test-print -w @cardapio/print-agent",
     "test": "npm test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"

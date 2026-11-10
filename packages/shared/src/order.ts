@@ -45,6 +45,11 @@ export const OrderSchema = z.object({
   paymentMethod: z.string().optional(),
 });
 
+/** Pedido como chega do cliente: id, número e data são definidos pelo servidor. */
+export const OrderDraftSchema = OrderSchema.omit({ id: true, number: true, createdAt: true });
+
+export type OrderDraft = z.infer<typeof OrderDraftSchema>;
+export type OrderDraftInput = z.input<typeof OrderDraftSchema>;
 export type OrderItemOption = z.infer<typeof OrderItemOptionSchema>;
 export type OrderItem = z.infer<typeof OrderItemSchema>;
 export type OrderType = z.infer<typeof OrderTypeSchema>;

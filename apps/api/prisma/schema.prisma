@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Restaurant {
+  id              String   @id @default(uuid())
+  name            String
+  slug            String   @unique
+  /// Contador para numerar os pedidos de cada restaurante (#0001, #0002...).
+  lastOrderNumber Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  orders       Order[]
+  printJobs    PrintJob[]
+  agents       Agent[]
+  pairingCodes PairingCode[]
+}
+
+/// Um agente de impressão instalado em um PC do restaurante.
+model Agent {
+  id           String    @id @default(uuid())
+  restaurantId String
+  name         String
+  /// Guardamos só o hash SHA-256 do token: um vazamento do banco não expõe credenciais.
+  tokenHash    String    @unique
+  version      String?
+  printers     String[]
+  lastSeenAt   DateTime?
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+}
+
+/// Código curto e temporário (ex.: K7P-2QX) para parear um agente sem digitar token.
+model PairingCode {
+  id           String    @id @default(uuid())
+  restaurantId String
+  codeHash     String    @unique
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id           String   @id
+  restaurantId String
+  number       Int
+  type         String
+  totalCents   Int
+  /// Snapshot completo do pedido (itens, adicionais, cliente) no formato do pacote shared.
+  data         Json
+  createdAt    DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  printJobs  PrintJob[]
+
+  @@unique([restaurantId, number])
+}
+
+enum PrintJobStatus {
+  QUEUED
+  SENT
+  PRINTED
+  FAILED
+}
+
+/// Outbox de impressão: o job só sai de QUEUED/SENT quando o agente confirma.
+model PrintJob {
+  id           String         @id @default(uuid())
+  restaurantId String
+  orderId      String
+  status       PrintJobStatus @default(QUEUED)
+  /// Quantas vezes o job foi enviado ao agente (reenvios após reconexão).
+  sendCount    Int            @default(0)
+  /// Resultado por impressora, vindo do ACK do agente.
+  printers     Json?
+  createdAt    DateTime       @default(now())
+  sentAt       DateTime?
+  completedAt  DateTime?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, status])
+}

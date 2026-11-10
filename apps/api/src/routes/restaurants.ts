@@ -1,0 +1,100 @@
+import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
+import { OrderDraftSchema } from '@cardapio/shared';
+import type { AgentHub } from '../agents/hub';
+import { generatePairingCode, hashToken } from '../auth/tokens';
+import { prisma } from '../db';
+import { createOrder } from '../orders/service';
+import { sampleOrder } from '../sample-orders';
+import { findRestaurantOr404, requireAdmin } from './common';
+
+const PAIRING_CODE_TTL_MS = 10 * 60 * 1000;
+
+const SlugParams = z.object({ slug: z.string() });
+const AgentParams = SlugParams.extend({ agentId: z.string().uuid() });
+const CreateRestaurantBody = z.object({
+  name: z.string().min(2).max(100),
+  slug: z
+    .string()
+    .min(2)
+    .max(50)
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Use apenas letras minúsculas, números e hífens'),
+});
+
+export async function restaurantRoutes(app: FastifyInstance, { hub }: { hub: AgentHub }) {
+  app.addHook('preHandler', requireAdmin);
+
+  app.post('/restaurants', async (request, reply) => {
+    const body = CreateRestaurantBody.parse(request.body);
+    const exists = await prisma.restaurant.findUnique({ where: { slug: body.slug } });
+    if (exists) return reply.code(409).send({ error: 'Slug já está em uso' });
+    return reply.code(201).send(await prisma.restaurant.create({ data: body }));
+  });
+
+  /** Cria um pedido. Sem corpo, gera um pedido aleatório (útil para testes). */
+  app.post('/restaurants/:slug/orders', async (request, reply) => {
+    const { slug } = SlugParams.parse(request.params);
+    const restaurant = await findRestaurantOr404(slug, reply);
+    if (!restaurant) return;
+
+    const draft = OrderDraftSchema.parse(request.body ?? sampleOrder());
+    const { order, job } = await createOrder(prisma, restaurant.id, draft);
+    const sent = await hub.dispatch(job.id);
+    request.log.info({ orderNumber: order.number, jobId: job.id, sent }, sent ? 'Pedido enviado ao agente' : 'Pedido na fila: agente offline');
+    return reply.code(201).send({ order, printJob: { id: job.id, status: sent ? 'SENT' : 'QUEUED' } });
+  });
+
+  app.get('/restaurants/:slug/print-jobs', async (request, reply) => {
+    const { slug } = SlugParams.parse(request.params);
+    const restaurant = await findRestaurantOr404(slug, reply);
+    if (!restaurant) return;
+
+    const jobs = await prisma.printJob.findMany({
+      where: { restaurantId: restaurant.id },
+      include: { order: { select: { number: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    return jobs.map(({ order, orderId: _orderId, restaurantId: _restaurantId, ...job }) => ({ ...job, orderNumber: order.number }));
+  });
+
+  /** Gera um código de pareamento de uso único, válido por 10 minutos. */
+  app.post('/restaurants/:slug/pairing-codes', async (request, reply) => {
+    const { slug } = SlugParams.parse(request.params);
+    const restaurant = await findRestaurantOr404(slug, reply);
+    if (!restaurant) return;
+
+    const code = generatePairingCode();
+    const expiresAt = new Date(Date.now() + PAIRING_CODE_TTL_MS);
+    await prisma.pairingCode.create({ data: { restaurantId: restaurant.id, codeHash: hashToken(code), expiresAt } });
+    return reply.code(201).send({ code, expiresAt });
+  });
+
+  app.get('/restaurants/:slug/agents', async (request, reply) => {
+    const { slug } = SlugParams.parse(request.params);
+    const restaurant = await findRestaurantOr404(slug, reply);
+    if (!restaurant) return;
+
+    const agents = await prisma.agent.findMany({
+      where: { restaurantId: restaurant.id },
+      orderBy: { createdAt: 'desc' },
+      omit: { tokenHash: true },
+    });
+    return agents.map((a) => ({ ...a, online: hub.isOnline(a.id) }));
+  });
+
+  /** Revoga o acesso de um agente (ex.: PC roubado ou trocado). */
+  app.delete('/restaurants/:slug/agents/:agentId', async (request, reply) => {
+    const { slug, agentId } = AgentParams.parse(request.params);
+    const restaurant = await findRestaurantOr404(slug, reply);
+    if (!restaurant) return;
+
+    const { count } = await prisma.agent.updateMany({
+      where: { id: agentId, restaurantId: restaurant.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    if (count === 0) return reply.code(404).send({ error: 'Agente não encontrado ou já revogado' });
+    hub.disconnect(agentId, 'revoked');
+    return reply.code(204).send();
+  });
+}

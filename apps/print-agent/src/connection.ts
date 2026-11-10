@@ -16,6 +16,8 @@ export interface ConnectionOptions {
   /** Chamado após o servidor aceitar o token (mensagem `welcome`). */
   onReady: () => void;
   onMessage: (msg: ServerMessage) => void;
+  /** Token recusado ou revogado: não adianta reconectar. */
+  onUnauthorized: (reason: string) => void;
 }
 
 /**
@@ -95,8 +97,12 @@ export class ServerConnection {
       this.ready = false;
       this.ws = null;
       this.clearHeartbeat();
-      if (event.code === CloseCodes.UNAUTHORIZED) log.error('Token recusado pelo servidor. Verifique o "token" no agent.config.json.');
-      else if (event.code === CloseCodes.REPLACED) log.warn('Outra instância do agente conectou com o mesmo token.');
+      if (event.code === CloseCodes.UNAUTHORIZED && event.reason !== 'hello timeout') {
+        this.stopped = true;
+        this.opts.onUnauthorized(event.reason || 'unauthorized');
+        return;
+      }
+      if (event.code === CloseCodes.REPLACED) log.warn('Outra instância do agente conectou com o mesmo token.');
       else if (wasReady) log.warn(`🔴 Conexão perdida (código ${event.code}).`);
       if (!this.stopped) this.scheduleReconnect();
     });

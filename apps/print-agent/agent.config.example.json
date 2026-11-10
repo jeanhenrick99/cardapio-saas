@@ -1,6 +1,5 @@
 {
   "serverUrl": "ws://localhost:8080/agent",
-  "token": "dev-token",
   "dataDir": "./data",
   "maxAttempts": 3,
   "retryBaseMs": 2000,
@@ -9,20 +8,26 @@
       "name": "cozinha",
       "type": "virtual",
       "columns": 48,
-      "sectors": ["cozinha"]
+      "sectors": [
+        "cozinha"
+      ]
     },
     {
       "name": "bar",
       "type": "virtual",
       "columns": 32,
-      "sectors": ["bar"]
+      "sectors": [
+        "bar"
+      ]
     },
     {
       "name": "caixa",
       "type": "virtual",
       "title": "CONFERÊNCIA",
       "columns": 48,
-      "sectors": ["*"],
+      "sectors": [
+        "*"
+      ],
       "showPrices": true
     }
   ]

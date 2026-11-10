@@ -36,7 +36,8 @@ export const PrinterConfigSchema = z.discriminatedUnion('type', [
 export const AgentConfigSchema = z
   .object({
     serverUrl: z.string().url(),
-    token: z.string().min(1),
+    /** Opcional: normalmente o token vem do pareamento (data/credentials.json). */
+    token: z.string().min(1).optional(),
     dataDir: z.string().default('./data'),
     maxAttempts: z.number().int().positive().default(3),
     retryBaseMs: z.number().int().nonnegative().default(2000),
