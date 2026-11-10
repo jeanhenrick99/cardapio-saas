@@ -1,0 +1,18 @@
+{
+  "name": "@cardapio/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "API do cardápio. Por enquanto: servidor de desenvolvimento que despacha pedidos para o agente de impressão.",
+  "scripts": {
+    "dev": "tsx src/dev-server.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@cardapio/shared": "*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.13"
+  }
+}

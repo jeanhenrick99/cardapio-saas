@@ -1,0 +1,24 @@
+{
+  "name": "cardapio-saas",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w @cardapio/api",
+    "dev:agent": "npm run dev -w @cardapio/print-agent",
+    "test-print": "npm run test-print -w @cardapio/print-agent",
+    "test": "npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

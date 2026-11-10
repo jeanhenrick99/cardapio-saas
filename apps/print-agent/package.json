@@ -1,0 +1,18 @@
+{
+  "name": "@cardapio/print-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agente local que recebe pedidos via WebSocket e imprime em impressoras térmicas (ESC/POS).",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "test-print": "tsx src/test-print.ts",
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@cardapio/shared": "*",
+    "zod": "^3.24.0"
+  }
+}

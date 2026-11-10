@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.log
+.env
+
+# Print agent: config local, fila SQLite e cupons da impressora virtual
+apps/print-agent/agent.config.json
+apps/print-agent/data/
+apps/print-agent/output/
