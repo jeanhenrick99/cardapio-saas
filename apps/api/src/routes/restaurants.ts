@@ -11,6 +11,19 @@ import { RestaurantInputSchema } from './schemas';
 const PAIRING_CODE_TTL_MS = 10 * 60 * 1000;
 
 const SlugParams = z.object({ slug: z.string() });
+
+/** Configurações da vitrine. Todos os campos são opcionais (PATCH). */
+const SettingsBody = z
+  .object({
+    name: z.string().trim().min(2).max(100),
+    logoUrl: z.string().url().max(500).nullable(),
+    coverUrl: z.string().url().max(500).nullable(),
+    acceptingOrders: z.boolean(),
+    pickupMinutes: z.number().int().min(0).max(600),
+    deliveryMinutes: z.number().int().min(0).max(600),
+    minOrderCents: z.number().int().min(0).max(10_000_000),
+  })
+  .partial();
 const AgentParams = SlugParams.extend({ agentId: z.string().uuid() });
 
 export async function restaurantRoutes(app: FastifyInstance, { hub }: { hub: AgentHub }) {
@@ -37,6 +50,15 @@ export async function restaurantRoutes(app: FastifyInstance, { hub }: { hub: Age
     const { order, job, sent } = await placeOrder(prisma, hub, restaurant.id, checkout);
     request.log.info({ orderNumber: order.number, jobId: job.id, sent }, sent ? 'Pedido enviado ao agente' : 'Pedido na fila: agente offline');
     return reply.code(201).send({ order, printJob: { id: job.id, status: sent ? 'SENT' : 'QUEUED' } });
+  });
+
+  /** Abre/fecha o restaurante e ajusta tempos, pedido mínimo e imagens. Só o dono. */
+  app.patch('/restaurants/:slug/settings', async (request, reply) => {
+    const { slug } = SlugParams.parse(request.params);
+    const restaurant = await loadRestaurantFor(request, reply, slug, ['OWNER']);
+    if (!restaurant) return;
+    const data = SettingsBody.parse(request.body);
+    return prisma.restaurant.update({ where: { id: restaurant.id }, data, omit: { lastOrderNumber: true } });
   });
 
   app.get('/restaurants/:slug/print-jobs', async (request, reply) => {

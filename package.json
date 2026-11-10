@@ -7,6 +7,7 @@
     "apps/*"
   ],
   "scripts": {
+    "dev": "npm run db:up && concurrently --kill-others-on-fail --names api,web --prefix-colors yellow,magenta \"npm:dev:api\" \"npm:dev:web\"",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "db:migrate": "npm run db:migrate -w @cardapio/api",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.0",
+    "concurrently": "^9.2.5",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

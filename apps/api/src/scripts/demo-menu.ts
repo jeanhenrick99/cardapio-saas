@@ -81,3 +81,6 @@ export const DEMO_MENU: { name: string; products: Product[] }[] = [
     ],
   },
 ];
+
+/** Produtos que aparecem na faixa "Destaques". */
+export const DEMO_FEATURED = ['X-Burguer', 'X-Tudo', 'Pizza grande (8 fatias)', 'Açaí 500 ml', 'Caipirinha'];

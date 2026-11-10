@@ -22,6 +22,8 @@ export interface MenuProduct {
   name: string;
   description: string | null;
   priceCents: number;
+  imageUrl: string | null;
+  featured: boolean;
   optionGroups: MenuOptionGroup[];
 }
 
@@ -31,8 +33,20 @@ export interface MenuCategory {
   products: MenuProduct[];
 }
 
+/** Informações da "vitrine" do restaurante, mostradas no topo do cardápio. */
+export interface PublicRestaurant {
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  coverUrl: string | null;
+  acceptingOrders: boolean;
+  pickupMinutes: number;
+  deliveryMinutes: number;
+  minOrderCents: number;
+}
+
 export interface PublicMenu {
-  restaurant: { name: string; slug: string };
+  restaurant: PublicRestaurant;
   categories: MenuCategory[];
 }
 

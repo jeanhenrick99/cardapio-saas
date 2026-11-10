@@ -27,7 +27,7 @@ export function loadAdminMenu(prisma: PrismaClient, restaurantId: string) {
  */
 export async function loadPublicMenu(
   prisma: PrismaClient,
-  restaurant: { id: string; name: string; slug: string },
+  restaurant: { id: string } & PublicMenu['restaurant'],
 ): Promise<PublicMenu> {
   const categories = await prisma.category.findMany({
     where: { restaurantId: restaurant.id, active: true },
@@ -36,7 +36,16 @@ export async function loadPublicMenu(
   });
 
   return {
-    restaurant: { name: restaurant.name, slug: restaurant.slug },
+    restaurant: {
+      name: restaurant.name,
+      slug: restaurant.slug,
+      logoUrl: restaurant.logoUrl,
+      coverUrl: restaurant.coverUrl,
+      acceptingOrders: restaurant.acceptingOrders,
+      pickupMinutes: restaurant.pickupMinutes,
+      deliveryMinutes: restaurant.deliveryMinutes,
+      minOrderCents: restaurant.minOrderCents,
+    },
     categories: categories
       .map((c) => ({
         id: c.id,
@@ -47,6 +56,8 @@ export async function loadPublicMenu(
             name: p.name,
             description: p.description,
             priceCents: p.priceCents,
+            imageUrl: p.imageUrl,
+            featured: p.featured,
             optionGroups: p.optionGroups.map((g) => ({
               id: g.id,
               name: g.name,

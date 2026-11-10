@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { describe, it } from 'node:test';
 import { CheckoutSchema, OrderSchema, orderTotalCents, type CheckoutInput } from '@cardapio/shared';
-import { buildOrderDraft, CheckoutError, type PricingProduct } from './pricing';
+import { buildOrderDraft, checkRestaurantRules, CheckoutError, type PricingProduct } from './pricing';
 
 const id = () => randomUUID();
 const ids = { burger: id(), soda: id(), point: id(), rare: id(), well: id(), extras: id(), bacon: id(), egg: id(), cheese: id() };
@@ -113,5 +113,31 @@ describe('CheckoutSchema', () => {
 
   it('limita a quantidade por item', () => {
     assert.ok(!CheckoutSchema.safeParse({ type: 'mesa', table: '1', items: [{ productId: ids.soda, quantity: 500 }] }).success);
+  });
+});
+
+describe('checkRestaurantRules', () => {
+  const sodas = (quantity: number, type: 'mesa' | 'delivery') =>
+    buildOrderDraft(
+      CheckoutSchema.parse({
+        type,
+        ...(type === 'mesa' ? { table: '1' } : { customer: { name: 'Ana', phone: '11 9', address: 'Rua A' } }),
+        items: [{ productId: ids.soda, quantity }],
+      }),
+      menu,
+    );
+  const rules = { acceptingOrders: true, minOrderCents: 3000 };
+
+  it('restaurante fechado não recebe pedidos', () => {
+    assert.throws(() => checkRestaurantRules(sodas(1, 'mesa'), { ...rules, acceptingOrders: false }), /fechado/);
+  });
+
+  it('delivery abaixo do mínimo é recusado com o valor na mensagem', () => {
+    assert.throws(() => checkRestaurantRules(sodas(4, 'delivery'), rules), /mínimo para delivery é R\$ 30,00/);
+    assert.doesNotThrow(() => checkRestaurantRules(sodas(5, 'delivery'), rules)); // 5 x R$ 7 = R$ 35
+  });
+
+  it('mínimo não vale para pedidos na mesa', () => {
+    assert.doesNotThrow(() => checkRestaurantRules(sodas(1, 'mesa'), rules));
   });
 });

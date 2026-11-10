@@ -60,16 +60,10 @@ npm run db:migrate
 npm run db:seed
 ```
 
-Em um terminal, suba a API:
+Agora suba tudo de uma vez (banco, API e site, no mesmo terminal):
 
 ```bash
-npm run dev:api
-```
-
-Em outro, suba o site:
-
-```bash
-npm run dev:web
+npm run dev
 ```
 
 Abra **http://localhost:3000/r/demo?mesa=7** e faça um pedido como cliente da mesa 7 (sem `?mesa=`, o cliente escolhe retirada ou delivery).
@@ -106,6 +100,8 @@ npm run order
 
 | Comando | O que faz |
 |---|---|
+| `npm run dev` | Sobe o PostgreSQL, a API (porta 8080) e o site (porta 3000) juntos |
+| `npm run dev:api` / `dev:web` / `dev:agent` | Sobe cada parte separadamente |
 | `npm run db:up` / `db:down` | Sobe/derruba o PostgreSQL no Docker |
 | `npm run db:migrate` | Aplica as migrations do Prisma |
 | `npm run db:studio` | Abre o Prisma Studio para ver os dados |

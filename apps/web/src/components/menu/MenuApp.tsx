@@ -1,19 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatBRL, type MenuProduct, type PublicMenu } from '@cardapio/shared';
-import {
-  addLine,
-  cartCount,
-  cartTotalCents,
-  parseStoredLines,
-  reconcileLines,
-  setQuantity,
-  startingPriceCents,
-  type CartLine,
-} from '@/lib/cart';
+import { addLine, cartCount, cartTotalCents, parseStoredLines, reconcileLines, setQuantity, type CartLine } from '@/lib/cart';
+import { filterMenu } from '@/lib/search';
 import { CartSheet, type PlacedOrder } from './CartSheet';
+import { HighlightCard, ProductCard } from './ProductCard';
 import { ProductSheet } from './ProductSheet';
+import { StoreHeader } from './StoreHeader';
 
 interface Props {
   menu: PublicMenu;
@@ -21,15 +15,21 @@ interface Props {
 }
 
 export function MenuApp({ menu, table }: Props) {
-  const storageKey = `cardapio:cart:${menu.restaurant.slug}`;
+  const { restaurant } = menu;
+  const storageKey = `cardapio:cart:${restaurant.slug}`;
   const [lines, setLines] = useState<CartLine[]>([]);
   const [restored, setRestored] = useState(false);
   const [product, setProduct] = useState<MenuProduct | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState(menu.categories[0]?.id);
+  const [search, setSearch] = useState('');
   const navRef = useRef<HTMLElement>(null);
+
+  const categories = useMemo(() => filterMenu(menu.categories, search), [menu.categories, search]);
+  const highlights = useMemo(() => menu.categories.flatMap((c) => c.products).filter((p) => p.featured), [menu.categories]);
+  const searching = search.trim().length > 0;
+  const [activeCategory, setActiveCategory] = useState(categories[0]?.id);
 
   // Carrinho salvo no celular: sobrevive a recarregar a página.
   useEffect(() => {
@@ -58,14 +58,13 @@ export function MenuApp({ menu, table }: Props) {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const offset = (navRef.current?.offsetHeight ?? 0) + 24;
-        let current = menu.categories[0]?.id;
-        for (const c of menu.categories) {
+        let current = categories[0]?.id;
+        for (const c of categories) {
           const el = document.getElementById(`cat-${c.id}`);
           if (el && el.getBoundingClientRect().top <= offset) current = c.id;
         }
-        // No fim da página, a última categoria pode nunca chegar ao topo.
         if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
-          current = menu.categories.at(-1)?.id ?? current;
+          current = categories.at(-1)?.id ?? current;
         }
         setActiveCategory(current);
       });
@@ -76,7 +75,7 @@ export function MenuApp({ menu, table }: Props) {
       cancelAnimationFrame(frame);
       window.removeEventListener('scroll', update);
     };
-  }, [menu]);
+  }, [categories]);
 
   useEffect(() => {
     navRef.current?.querySelector(`[data-cat="${activeCategory}"]`)?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
@@ -90,21 +89,20 @@ export function MenuApp({ menu, table }: Props) {
 
   const closeProduct = useCallback(() => setProduct(null), []);
   const closeCart = useCallback(() => setCartOpen(false), []);
-
   const count = cartCount(lines);
 
   if (placed) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-4xl dark:bg-green-900/40">✓</div>
-        <h1 className="text-2xl font-bold">Pedido #{String(placed.number).padStart(4, '0')} enviado!</h1>
-        <p className="text-stone-600 dark:text-stone-400">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full text-4xl text-gold ring-1 ring-gold">✓</div>
+        <h1 className="font-display text-3xl font-semibold">Pedido #{String(placed.number).padStart(4, '0')} enviado!</h1>
+        <p className="text-muted">
           {table ? `Já estamos preparando. Ele será servido na mesa ${table}.` : 'Já estamos preparando o seu pedido.'}
         </p>
-        <p className="text-lg font-semibold tabular-nums">Total: {formatBRL(placed.totalCents)}</p>
+        <p className="text-lg font-semibold text-gold tabular-nums">Total: {formatBRL(placed.totalCents)}</p>
         <button
           onClick={() => setPlaced(null)}
-          className="mt-4 rounded-xl border border-stone-300 px-5 py-3 font-semibold dark:border-stone-700"
+          className="mt-4 rounded-xl border border-gold-deep px-5 py-3 font-semibold text-gold hover:border-gold"
         >
           Pedir mais alguma coisa
         </button>
@@ -113,79 +111,66 @@ export function MenuApp({ menu, table }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl pb-28">
-      <header className="px-4 pt-6 pb-4">
-        <h1 className="text-2xl font-bold tracking-tight">{menu.restaurant.name}</h1>
-        <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-          {table ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-0.5 font-semibold text-brand-700 dark:bg-brand-700/30 dark:text-brand-100">
-              Mesa {table}
-            </span>
-          ) : (
-            'Retirada no local ou delivery'
-          )}
-        </p>
-      </header>
+    <div className="mx-auto max-w-6xl px-4 pb-28 sm:px-6">
+      <StoreHeader restaurant={restaurant} table={table} search={search} onSearch={setSearch} />
 
       {menu.categories.length === 0 ? (
-        <p className="px-4 py-12 text-center text-stone-500">O cardápio ainda está sendo preparado. Volte em instantes!</p>
+        <p className="py-16 text-center text-muted">O cardápio ainda está sendo preparado. Volte em instantes!</p>
       ) : (
         <>
-          <nav
-            ref={navRef}
-            aria-label="Categorias"
-            className="no-scrollbar sticky top-0 z-10 flex gap-2 overflow-x-auto border-b border-stone-200 bg-stone-50/95 px-4 py-3 backdrop-blur dark:border-stone-800 dark:bg-stone-950/95"
-          >
-            {menu.categories.map((c) => (
-              <a
-                key={c.id}
-                href={`#cat-${c.id}`}
-                data-cat={c.id}
-                aria-current={activeCategory === c.id ? 'true' : undefined}
-                className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors ${
-                  activeCategory === c.id
-                    ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900'
-                    : 'bg-white text-stone-700 ring-1 ring-stone-200 dark:bg-stone-900 dark:text-stone-300 dark:ring-stone-800'
-                }`}
-              >
-                {c.name}
-              </a>
-            ))}
-          </nav>
+          {/* Destaques */}
+          {!searching && highlights.length > 0 && (
+            <section aria-labelledby="destaques" className="mt-8">
+              <h2 id="destaques" className="mb-3 font-display text-2xl font-semibold text-gold-soft">
+                Destaques
+              </h2>
+              <div className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
+                {highlights.map((p) => (
+                  <HighlightCard key={p.id} product={p} onSelect={() => setProduct(p)} />
+                ))}
+              </div>
+            </section>
+          )}
 
-          {menu.categories.map((category) => (
-            <section key={category.id} id={`cat-${category.id}`} className="scroll-mt-16 px-4 pt-6">
-              <h2 className="mb-3 text-lg font-bold">{category.name}</h2>
-              <ul className="space-y-3">
-                {category.products.map((p) => {
-                  const start = startingPriceCents(p);
-                  const fromPrice = start !== p.priceCents || p.optionGroups.some((g) => g.options.some((o) => o.priceCents > 0));
-                  return (
-                    <li key={p.id}>
-                      <button
-                        onClick={() => setProduct(p)}
-                        className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-stone-200 transition hover:ring-brand-500 dark:bg-stone-900 dark:ring-stone-800"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="font-semibold">{p.name}</div>
-                          {p.description && (
-                            <div className="mt-0.5 line-clamp-2 text-sm text-stone-600 dark:text-stone-400">{p.description}</div>
-                          )}
-                          <div className="mt-2 text-sm font-semibold text-stone-900 tabular-nums dark:text-stone-100">
-                            {fromPrice && <span className="font-normal text-stone-500">a partir de </span>}
-                            {formatBRL(start)}
-                          </div>
-                        </div>
-                        <span
-                          aria-hidden
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xl leading-none text-white"
-                        >
-                          +
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
+          {/* Atalhos das categorias */}
+          {categories.length > 0 && (
+            <nav
+              ref={navRef}
+              aria-label="Categorias"
+              className="no-scrollbar sticky top-0 z-10 -mx-4 mt-6 flex gap-2 overflow-x-auto border-b border-line bg-bg/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6"
+            >
+              {categories.map((c) => (
+                <a
+                  key={c.id}
+                  href={`#cat-${c.id}`}
+                  data-cat={c.id}
+                  aria-current={activeCategory === c.id ? 'true' : undefined}
+                  className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors ${
+                    activeCategory === c.id ? 'bg-gold text-black' : 'text-muted ring-1 ring-line hover:text-gold'
+                  }`}
+                >
+                  {c.name}
+                </a>
+              ))}
+            </nav>
+          )}
+
+          {searching && categories.length === 0 && (
+            <p className="py-16 text-center text-muted">
+              Nenhum item encontrado para <strong className="text-fg">“{search.trim()}”</strong>.
+            </p>
+          )}
+
+          {/* Categorias em grade */}
+          {categories.map((category) => (
+            <section key={category.id} id={`cat-${category.id}`} className="scroll-mt-20 pt-8">
+              <h2 className="mb-4 text-sm font-semibold tracking-[0.2em] text-gold-soft uppercase">{category.name}</h2>
+              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {category.products.map((p) => (
+                  <li key={p.id}>
+                    <ProductCard product={p} onSelect={() => setProduct(p)} />
+                  </li>
+                ))}
               </ul>
             </section>
           ))}
@@ -193,13 +178,13 @@ export function MenuApp({ menu, table }: Props) {
       )}
 
       {count > 0 && !cartOpen && (
-        <div className="fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
           <button
             onClick={() => setCartOpen(true)}
-            className="mx-auto flex w-full max-w-2xl items-center justify-between rounded-2xl bg-brand-600 px-5 py-4 font-semibold text-white shadow-lg hover:bg-brand-700"
+            className="mx-auto flex w-full max-w-md items-center justify-between rounded-2xl bg-wine px-5 py-4 font-semibold text-fg shadow-lg ring-1 shadow-black ring-gold/30 hover:bg-wine-hover"
           >
             <span className="flex items-center gap-2">
-              <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-white/25 px-1.5 text-sm tabular-nums">{count}</span>
+              <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-gold px-1.5 text-sm text-black tabular-nums">{count}</span>
               Ver carrinho
             </span>
             <span className="tabular-nums">{formatBRL(cartTotalCents(lines))}</span>
@@ -208,7 +193,7 @@ export function MenuApp({ menu, table }: Props) {
       )}
 
       {toast && (
-        <div role="status" className="fixed inset-x-0 top-4 z-50 mx-auto w-fit rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-stone-900">
+        <div role="status" className="fixed inset-x-0 top-4 z-50 mx-auto w-fit rounded-full bg-surface px-4 py-2 text-sm font-medium text-gold shadow-lg ring-1 ring-gold-deep">
           {toast}
         </div>
       )}
@@ -228,7 +213,7 @@ export function MenuApp({ menu, table }: Props) {
 
       {cartOpen && (
         <CartSheet
-          slug={menu.restaurant.slug}
+          restaurant={restaurant}
           table={table}
           lines={lines}
           onClose={closeCart}

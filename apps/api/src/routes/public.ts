@@ -11,7 +11,20 @@ const SlugParams = z.object({ slug: z.string() });
 /** Rotas do cliente final (cardápio pelo QR Code): sem login. */
 export async function publicRoutes(app: FastifyInstance, { hub }: { hub: AgentHub }) {
   async function findRestaurant(slug: string) {
-    return prisma.restaurant.findUnique({ where: { slug }, select: { id: true, name: true, slug: true } });
+    return prisma.restaurant.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        coverUrl: true,
+        acceptingOrders: true,
+        pickupMinutes: true,
+        deliveryMinutes: true,
+        minOrderCents: true,
+      },
+    });
   }
 
   app.get('/public/restaurants/:slug/menu', async (request, reply) => {

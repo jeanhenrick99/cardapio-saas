@@ -1,20 +1,38 @@
 @import "tailwindcss";
 
+/*
+ * Tema premium: preto, dourado e vinho (vermelho escuro).
+ * Os componentes usam nomes semânticos (bg, surface, gold, wine...),
+ * então trocar a paleta, ou ter uma por restaurante no futuro,
+ * é só mudar estes valores.
+ */
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --color-brand-50: #fff7ed;
-  --color-brand-100: #ffedd5;
-  --color-brand-500: #f97316;
-  --color-brand-600: #ea580c;
-  --color-brand-700: #c2410c;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-playfair), Georgia, "Times New Roman", serif;
+
+  --color-bg: #0b0b0b; /* preto de fundo */
+  --color-surface: #151413; /* cartões e painéis */
+  --color-surface-2: #1e1c1a; /* campos, estados desativados */
+  --color-line: #2e2a25; /* bordas discretas, levemente quentes */
+  --color-fg: #f4efe6; /* texto principal: marfim, mais suave que branco puro */
+  --color-muted: #a59f94; /* texto secundário */
+
+  --color-gold: #c9a227; /* dourado principal: preços, destaques, seleção */
+  --color-gold-soft: #e3c766; /* dourado claro: hover e brilho */
+  --color-gold-deep: #8f7118; /* dourado escuro: bordas sutis */
+
+  --color-wine: #7a1420; /* vermelho escuro: botões de ação */
+  --color-wine-hover: #931c2a;
+  --color-wine-deep: #3a0a10; /* fundos de aviso */
 }
 
 html {
+  color-scheme: dark; /* campos nativos (select, checkbox) também ficam escuros */
   -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  @apply bg-stone-50 text-stone-900 antialiased dark:bg-stone-950 dark:text-stone-100;
+  @apply bg-bg text-fg antialiased;
 }
 
 /* Esconde a barra de rolagem horizontal das categorias, mantendo o scroll. */

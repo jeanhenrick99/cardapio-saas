@@ -2,12 +2,12 @@
 import { hashPassword } from '../auth/password';
 import { prisma } from '../db';
 import { DEMO_RESTAURANT, DEMO_USER } from './demo';
-import { DEMO_MENU } from './demo-menu';
+import { DEMO_FEATURED, DEMO_MENU } from './demo-menu';
 
 const restaurant = await prisma.restaurant.upsert({
   where: { slug: DEMO_RESTAURANT.slug },
   update: {},
-  create: DEMO_RESTAURANT,
+  create: { ...DEMO_RESTAURANT, pickupMinutes: 25, deliveryMinutes: 45, minOrderCents: 3000 },
 });
 
 const user = await prisma.user.upsert({
@@ -53,6 +53,15 @@ if ((await prisma.category.count({ where: { restaurantId: restaurant.id } })) ==
     });
   }
   console.log(`✔ Cardápio de demonstração com ${DEMO_MENU.reduce((n, c) => n + c.products.length, 0)} produtos`);
+}
+
+// Destaques: marca alguns produtos se o restaurante ainda não tiver nenhum.
+if ((await prisma.product.count({ where: { restaurantId: restaurant.id, featured: true } })) === 0) {
+  const { count } = await prisma.product.updateMany({
+    where: { restaurantId: restaurant.id, name: { in: DEMO_FEATURED } },
+    data: { featured: true },
+  });
+  console.log(`✔ ${count} produtos em destaque`);
 }
 
 console.log(`✔ Restaurante "${restaurant.name}" (slug: ${restaurant.slug})`);

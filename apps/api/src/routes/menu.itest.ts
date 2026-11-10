@@ -221,3 +221,79 @@ describe('cardápio público e pedido do cliente', () => {
     assert.equal(res.statusCode, 404);
   });
 });
+
+describe('vitrine do restaurante', () => {
+  it('dono configura tempos, mínimo e status; cardápio público mostra', async () => {
+    const owner = await signup(app);
+    await createSimpleProduct(app, owner);
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/restaurants/${owner.slug}/settings`,
+      headers: auth(owner.token),
+      payload: { pickupMinutes: 20, deliveryMinutes: 50, minOrderCents: 2500 },
+    });
+    assert.equal(res.statusCode, 200, res.body);
+    assert.equal(res.json().lastOrderNumber, undefined);
+
+    const menu = (await app.inject({ url: `/public/restaurants/${owner.slug}/menu` })).json<PublicMenu>();
+    assert.deepEqual(
+      { p: menu.restaurant.pickupMinutes, d: menu.restaurant.deliveryMinutes, m: menu.restaurant.minOrderCents, open: menu.restaurant.acceptingOrders },
+      { p: 20, d: 50, m: 2500, open: true },
+    );
+    assert.equal(menu.categories[0]!.products[0]!.featured, false);
+  });
+
+  it('funcionário não altera as configurações', async () => {
+    const owner = await signup(app);
+    const staff = await signup(app);
+    const restaurant = await prisma.restaurant.findUniqueOrThrow({ where: { slug: owner.slug } });
+    await prisma.membership.create({ data: { userId: staff.userId, restaurantId: restaurant.id, role: 'STAFF' } });
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/restaurants/${owner.slug}/settings`,
+      headers: auth(staff.token),
+      payload: { acceptingOrders: false },
+    });
+    assert.equal(res.statusCode, 403);
+  });
+
+  it('restaurante fechado recusa pedidos e delivery respeita o mínimo', async () => {
+    const owner = await signup(app);
+    const productId = await createSimpleProduct(app, owner, 1000);
+    const settings = (payload: object) =>
+      app.inject({ method: 'PATCH', url: `/restaurants/${owner.slug}/settings`, headers: auth(owner.token), payload });
+    const delivery = (quantity: number) =>
+      app.inject({
+        method: 'POST',
+        url: `/public/restaurants/${owner.slug}/orders`,
+        payload: { type: 'delivery', customer: { name: 'Ana', phone: '11 9', address: 'Rua A' }, items: [{ productId, quantity }] },
+      });
+
+    await settings({ acceptingOrders: false });
+    const closed = await app.inject({ method: 'POST', url: `/public/restaurants/${owner.slug}/orders`, payload: tableOrder(productId) });
+    assert.equal(closed.statusCode, 422);
+    assert.match(closed.json().error, /fechado/);
+
+    await settings({ acceptingOrders: true, minOrderCents: 3000 });
+    assert.equal((await delivery(2)).statusCode, 422);
+    assert.equal((await delivery(3)).statusCode, 201);
+  });
+
+  it('produto em destaque e com foto aparece assim no cardápio público', async () => {
+    const owner = await signup(app);
+    const category = (
+      await app.inject({ method: 'POST', url: `/restaurants/${owner.slug}/categories`, headers: auth(owner.token), payload: { name: 'Pratos' } })
+    ).json<{ id: string }>();
+    const created = await app.inject({
+      method: 'POST',
+      url: `/restaurants/${owner.slug}/products`,
+      headers: auth(owner.token),
+      payload: { categoryId: category.id, name: 'Salmão', priceCents: 7900, featured: true, imageUrl: 'https://exemplo.com/salmao.jpg' },
+    });
+    assert.equal(created.statusCode, 201, created.body);
+    const menu = (await app.inject({ url: `/public/restaurants/${owner.slug}/menu` })).json<PublicMenu>();
+    const p = menu.categories[0]!.products[0]!;
+    assert.equal(p.featured, true);
+    assert.equal(p.imageUrl, 'https://exemplo.com/salmao.jpg');
+  });
+});

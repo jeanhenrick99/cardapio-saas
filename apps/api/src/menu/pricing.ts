@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Checkout, OrderDraft, OrderItem } from '@cardapio/shared';
+import { formatBRL, type Checkout, type OrderDraft, type OrderItem } from '@cardapio/shared';
 
 /** Produto como vem do banco, com os dados necessários para precificar. */
 export interface PricingProduct {
@@ -89,4 +89,29 @@ export function buildOrderDraft(checkout: Checkout, products: Map<string, Pricin
     deliveryFeeCents: 0,
     discountCents: 0,
   };
+}
+
+/** Regras do restaurante que valem para o pedido inteiro. */
+export interface RestaurantRules {
+  acceptingOrders: boolean;
+  minOrderCents: number;
+}
+
+/**
+ * - restaurante fechado não recebe pedidos
+ * - delivery precisa atingir o pedido mínimo (mesa e retirada, não)
+ */
+export function checkRestaurantRules(draft: OrderDraft, rules: RestaurantRules): void {
+  if (!rules.acceptingOrders) {
+    throw new CheckoutError('O restaurante está fechado no momento e não está recebendo pedidos');
+  }
+  if (draft.type === 'delivery' && rules.minOrderCents > 0) {
+    const subtotal = draft.items.reduce(
+      (sum, i) => sum + (i.unitPriceCents + i.options.reduce((s, o) => s + o.priceCents, 0)) * i.quantity,
+      0,
+    );
+    if (subtotal < rules.minOrderCents) {
+      throw new CheckoutError(`O pedido mínimo para delivery é ${formatBRL(rules.minOrderCents)}`);
+    }
+  }
 }

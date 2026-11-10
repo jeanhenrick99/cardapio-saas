@@ -37,7 +37,7 @@ const extras: MenuOptionGroup = {
     { id: 'cheddar', name: 'Cheddar', priceCents: 500 },
   ],
 };
-const burger: MenuProduct = { id: 'p1', name: 'X-Burguer', description: null, priceCents: 2500, optionGroups: [point, extras] };
+const burger: MenuProduct = { id: 'p1', name: 'X-Burguer', description: null, priceCents: 2500, imageUrl: null, featured: false, optionGroups: [point, extras] };
 
 describe('toggleOption', () => {
   it('grupo de escolha única funciona como rádio', () => {

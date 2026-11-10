@@ -15,6 +15,16 @@ model Restaurant {
   lastOrderNumber Int      @default(0)
   createdAt       DateTime @default(now())
 
+  // Vitrine do cardápio
+  logoUrl         String?
+  coverUrl        String?
+  /// Liga/desliga o recebimento de pedidos ("Aberto agora" / "Fechado").
+  acceptingOrders Boolean  @default(true)
+  pickupMinutes   Int      @default(30)
+  deliveryMinutes Int      @default(45)
+  /// Valor mínimo do pedido de delivery (em centavos). 0 = sem mínimo.
+  minOrderCents   Int      @default(0)
+
   orders       Order[]
   printJobs    PrintJob[]
   agents       Agent[]
@@ -171,6 +181,9 @@ model Product {
   position     Int      @default(0)
   /// Desativado = não aparece no cardápio público (ex.: acabou o estoque).
   active       Boolean  @default(true)
+  /// Aparece na faixa "Destaques" do topo do cardápio.
+  featured     Boolean  @default(false)
+  imageUrl     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

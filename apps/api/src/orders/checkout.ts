@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import type { Checkout } from '@cardapio/shared';
 import type { AgentHub } from '../agents/hub';
-import { buildOrderDraft } from '../menu/pricing';
+import { buildOrderDraft, checkRestaurantRules } from '../menu/pricing';
 import { loadPricingProducts } from '../menu/queries';
 import { createOrder } from './service';
 
@@ -13,6 +13,11 @@ export async function placeOrder(prisma: PrismaClient, hub: AgentHub, restaurant
     checkout.items.map((i) => i.productId),
   );
   const draft = buildOrderDraft(checkout, products);
+  const rules = await prisma.restaurant.findUniqueOrThrow({
+    where: { id: restaurantId },
+    select: { acceptingOrders: true, minOrderCents: true },
+  });
+  checkRestaurantRules(draft, rules);
   const { order, job } = await createOrder(prisma, restaurantId, draft);
   const sent = await hub.dispatch(job.id);
   return { order, job, sent };

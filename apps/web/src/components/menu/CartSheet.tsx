@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { formatBRL, type CheckoutInput } from '@cardapio/shared';
+import { formatBRL, type CheckoutInput, type PublicRestaurant } from '@cardapio/shared';
 import { cartTotalCents, lineTotalCents, toCheckoutItems, type CartLine } from '@/lib/cart';
 import { QuantityStepper } from '../ui/QuantityStepper';
 import { Sheet } from '../ui/Sheet';
@@ -12,7 +12,7 @@ export interface PlacedOrder {
 }
 
 interface Props {
-  slug: string;
+  restaurant: PublicRestaurant;
   table: string | null;
   lines: CartLine[];
   onClose: () => void;
@@ -23,10 +23,11 @@ interface Props {
 const PAYMENT_METHODS = ['Pix', 'Cartão de crédito', 'Cartão de débito', 'Dinheiro'];
 
 const input =
-  'w-full rounded-xl border border-stone-300 bg-transparent px-3 py-2.5 outline-none focus:border-brand-500 dark:border-stone-700';
+  'w-full rounded-xl border border-line bg-surface-2 px-3 py-2.5 outline-none placeholder:text-muted/60 focus:border-gold';
 
 /** Carrinho + finalização do pedido. */
-export function CartSheet({ slug, table, lines, onClose, onChangeQuantity, onPlaced }: Props) {
+export function CartSheet({ restaurant, table, lines, onClose, onChangeQuantity, onPlaced }: Props) {
+  const slug = restaurant.slug;
   const [mode, setMode] = useState<'retirada' | 'delivery'>('retirada');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -37,6 +38,14 @@ export function CartSheet({ slug, table, lines, onClose, onChangeQuantity, onPla
   const [error, setError] = useState<string | null>(null);
 
   const total = cartTotalCents(lines);
+  const isDelivery = !table && mode === 'delivery';
+  const missingForMinimum = isDelivery ? Math.max(0, restaurant.minOrderCents - total) : 0;
+  // Avisos que impedem o envio (o servidor também confere as mesmas regras).
+  const blocked = !restaurant.acceptingOrders
+    ? 'O restaurante está fechado no momento.'
+    : missingForMinimum > 0
+      ? `Faltam ${formatBRL(missingForMinimum)} para o pedido mínimo do delivery (${formatBRL(restaurant.minOrderCents)}).`
+      : null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,24 +98,24 @@ export function CartSheet({ slug, table, lines, onClose, onChangeQuantity, onPla
         <button
           type="submit"
           form="checkout"
-          disabled={submitting || lines.length === 0}
-          className="flex w-full items-center justify-between rounded-xl bg-brand-600 px-4 py-3 font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+          disabled={submitting || lines.length === 0 || blocked !== null}
+          className="flex w-full items-center justify-between rounded-xl bg-wine px-4 py-3 font-semibold text-fg ring-1 ring-gold/30 hover:bg-wine-hover disabled:opacity-60"
         >
           <span>{submitting ? 'Enviando...' : 'Fazer pedido'}</span>
           <span className="tabular-nums">{formatBRL(total)}</span>
         </button>
       }
     >
-      <ul className="mb-6 divide-y divide-stone-100 dark:divide-stone-800">
+      <ul className="mb-6 divide-y divide-line">
         {lines.map((line) => (
           <li key={line.key} className="flex gap-3 py-3">
             <div className="min-w-0 flex-1">
               <div className="font-medium">{line.name}</div>
               {line.options.length > 0 && (
-                <div className="text-sm text-stone-500">{line.options.map((o) => o.name).join(', ')}</div>
+                <div className="text-sm text-muted">{line.options.map((o) => o.name).join(', ')}</div>
               )}
-              {line.notes && <div className="text-sm text-stone-500 italic">“{line.notes}”</div>}
-              <div className="mt-1 text-sm font-semibold tabular-nums">{formatBRL(lineTotalCents(line))}</div>
+              {line.notes && <div className="text-sm text-muted italic">“{line.notes}”</div>}
+              <div className="mt-1 text-sm font-semibold text-gold tabular-nums">{formatBRL(lineTotalCents(line))}</div>
             </div>
             <QuantityStepper
               size="sm"
@@ -121,12 +130,12 @@ export function CartSheet({ slug, table, lines, onClose, onChangeQuantity, onPla
 
       <form id="checkout" onSubmit={submit} className="space-y-4">
         {table ? (
-          <div className="rounded-xl bg-brand-50 px-4 py-3 text-brand-700 dark:bg-brand-700/20 dark:text-brand-100">
+          <div className="rounded-xl border border-gold-deep/60 bg-gold/10 px-4 py-3 text-gold-soft">
             Pedido para a <strong>mesa {table}</strong>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2 rounded-xl bg-stone-100 p-1 dark:bg-stone-800" role="radiogroup" aria-label="Tipo de pedido">
+            <div className="grid grid-cols-2 gap-2 rounded-xl bg-surface-2 p-1 ring-1 ring-line" role="radiogroup" aria-label="Tipo de pedido">
               {(['retirada', 'delivery'] as const).map((m) => (
                 <button
                   key={m}
@@ -135,7 +144,7 @@ export function CartSheet({ slug, table, lines, onClose, onChangeQuantity, onPla
                   aria-checked={mode === m}
                   onClick={() => setMode(m)}
                   className={`rounded-lg py-2 text-sm font-semibold ${
-                    mode === m ? 'bg-white shadow dark:bg-stone-950' : 'text-stone-500'
+                    mode === m ? 'bg-gold text-black shadow' : 'text-muted'
                   }`}
                 >
                   {m === 'retirada' ? 'Retirar no local' : 'Delivery'}
@@ -147,7 +156,7 @@ export function CartSheet({ slug, table, lines, onClose, onChangeQuantity, onPla
               <input required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} className={input} autoComplete="name" />
             </label>
             <label className="block">
-              <span className="mb-1 block text-sm font-semibold">Telefone {mode === 'retirada' && <span className="font-normal text-stone-500">(opcional)</span>}</span>
+              <span className="mb-1 block text-sm font-semibold">Telefone {mode === 'retirada' && <span className="font-normal text-muted">(opcional)</span>}</span>
               <input
                 required={mode === 'delivery'}
                 type="tel"
@@ -187,12 +196,18 @@ export function CartSheet({ slug, table, lines, onClose, onChangeQuantity, onPla
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-semibold">Observações do pedido <span className="font-normal text-stone-500">(opcional)</span></span>
+          <span className="mb-1 block text-sm font-semibold">Observações do pedido <span className="font-normal text-muted">(opcional)</span></span>
           <input maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} className={input} />
         </label>
 
+        {blocked && (
+          <p role="status" className="rounded-xl border border-gold-deep/60 bg-gold/10 px-4 py-3 text-sm text-gold-soft">
+            {blocked}
+          </p>
+        )}
+
         {error && (
-          <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+          <p role="alert" className="rounded-xl border border-wine-hover/60 bg-wine-deep px-4 py-3 text-sm text-red-200">
             {error}
           </p>
         )}
