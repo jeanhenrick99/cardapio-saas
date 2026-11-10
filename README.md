@@ -2,7 +2,7 @@
 
 Plataforma de cardápio digital e pedidos para restaurantes, com **impressão automática na cozinha** via um agente local que fala ESC/POS direto com as impressoras térmicas.
 
-> 🚧 Em desenvolvimento. Já funciona: API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
+> 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular** (mesa, retirada ou delivery), API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
 
 ## Como funciona
 
@@ -27,6 +27,7 @@ O navegador não consegue imprimir em silêncio numa térmica, e a nuvem não en
 
 ```
 apps/
+  web/           Cardápio do cliente: Next.js 16, React 19 e Tailwind CSS 4
   api/           API: Fastify, Prisma, PostgreSQL e o hub WebSocket dos agentes
   print-agent/   Agente de impressão (Node + TypeScript)
 packages/
@@ -64,6 +65,16 @@ Em um terminal, suba a API:
 ```bash
 npm run dev:api
 ```
+
+Em outro, suba o site:
+
+```bash
+npm run dev:web
+```
+
+Abra **http://localhost:3000/r/demo?mesa=7** e faça um pedido como cliente da mesa 7 (sem `?mesa=`, o cliente escolhe retirada ou delivery).
+
+> 📱 **Para testar no celular:** conecte-o no mesmo Wi-Fi e abra o endereço "Network" que o Next mostra ao iniciar (ex.: `http://192.168.0.10:3000/r/demo?mesa=7`). É exatamente o link que iria no QR Code da mesa.
 
 ### Pareando o agente
 
@@ -146,6 +157,10 @@ curl -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/menu
 
 **O cliente nunca define o preço.** O carrinho envia só `productId`, `quantity` e `optionIds`. O servidor busca os preços no banco (sempre filtrando pelo restaurante do pedido) e valida as regras de cada grupo de complementos: mínimo e máximo de escolhas, opção desativada, opção de outro produto. A regra fica em uma função pura ([`menu/pricing.ts`](apps/api/src/menu/pricing.ts)), testada sem banco. Erros de regra de negócio voltam como **422** com uma mensagem que o cliente entende ("escolha pelo menos 1 em Ponto da carne").
 
+**Site e API no mesmo endereço.** O navegador chama `/api/*` no próprio site, e o Next repassa para a API ([`next.config.ts`](apps/web/next.config.ts)). Não precisa de CORS, e o cookie de sessão (que o painel vai usar) funciona com `SameSite=Lax`. O cardápio é carregado no servidor (React Server Component), então a página já chega pronta no celular.
+
+**Carrinho que sobrevive a recarregar a página.** O carrinho fica salvo no celular (`localStorage`). Ao voltar, ele é conferido com o cardápio atual: itens que saíram são removidos e os preços são atualizados. A lógica do carrinho fica em funções puras ([`lib/cart.ts`](apps/web/src/lib/cart.ts)), testadas sem navegador. A interface valida mínimo e máximo dos complementos para dar resposta imediata ao cliente, mas quem decide é sempre o servidor.
+
 **Complementos flexíveis.** Um produto tem grupos com mínimo e máximo de escolhas, o que cobre os casos reais: "ponto da carne" (exatamente 1), "adicionais" (0 a 4), "pizza meio a meio" (1 a 2 sabores). Um produto cujo grupo obrigatório ficou sem opções disponíveis some do cardápio público, porque seria impossível pedi-lo.
 
 **Histórico preservado.** O pedido guarda uma cópia do que foi pedido (nome, preço, complementos). Editar ou apagar um produto não altera pedidos antigos.
@@ -224,11 +239,12 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [x] Cadastro, login e papéis (dono/funcionário)
 - [x] Cardápio com categorias, produtos e complementos
 - [x] Pedido público com preço calculado no servidor
+- [x] Cardápio web do cliente (mesa, retirada e delivery)
+- [ ] Gerador de QR Code das mesas
 - [ ] Convite de funcionários por e-mail
 - [ ] Fotos dos produtos
 - [ ] Taxa de entrega por bairro e horário de funcionamento
 - [ ] Painel do restaurante com status das impressoras em tempo real
-- [ ] Cardápio do cliente com QR Code na mesa
 - [ ] Painel da cozinha (KDS)
 - [ ] Impressoras USB e Bluetooth
 - [ ] Instalador `.exe` com ícone na bandeja

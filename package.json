@@ -14,6 +14,7 @@
     "db:studio": "npm run db:studio -w @cardapio/api",
     "dev:api": "npm run dev -w @cardapio/api",
     "dev:agent": "npm run dev -w @cardapio/print-agent",
+    "dev:web": "npm run dev -w @cardapio/web",
     "pair": "npm run pair -w @cardapio/print-agent --",
     "order": "npm run order -w @cardapio/api --",
     "pairing-code": "npm run pairing-code -w @cardapio/api --",

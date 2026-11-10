@@ -7,3 +7,8 @@ dist/
 apps/print-agent/agent.config.json
 apps/print-agent/data/
 apps/print-agent/output/
+
+# Next.js
+apps/web/.next/
+apps/web/next-env.d.ts
+*.tsbuildinfo
