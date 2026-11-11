@@ -38,3 +38,16 @@ export function parseBRL(input: string): number | null {
 export function centsToInput(cents: number): string {
   return (cents / 100).toFixed(2).replace('.', ',');
 }
+
+/** Indicadores do dia (pedidos criados desde a meia-noite, no horário local). */
+export function summarizeToday(orders: { createdAt: string; totalCents: number }[], now: Date = new Date()) {
+  const midnight = new Date(now);
+  midnight.setHours(0, 0, 0, 0);
+  const today = orders.filter((o) => new Date(o.createdAt) >= midnight);
+  const revenueCents = today.reduce((sum, o) => sum + o.totalCents, 0);
+  return {
+    count: today.length,
+    revenueCents,
+    averageCents: today.length ? Math.round(revenueCents / today.length) : 0,
+  };
+}

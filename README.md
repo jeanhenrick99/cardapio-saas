@@ -72,13 +72,18 @@ Abra **http://localhost:3000/r/demo?mesa=7** e faça um pedido como cliente da m
 
 ### Painel do restaurante
 
-Abra **http://localhost:3000/login** e clique em **"Entrar como demonstração"** (ou use `demo@cardapio.dev` / `demo12345`). O painel tem três abas:
+Abra **http://localhost:3000/login** e clique em **"Entrar como demonstração"** (ou use `demo@cardapio.dev` / `demo12345`).
+
+O painel tem menu lateral (com busca por **Ctrl+K** e seções recolhíveis; no celular ele vira uma gaveta) e uma barra superior com o status da loja. As telas:
+
+- **Início**: pedidos, faturamento e ticket médio do dia, mais atalhos que avisam o que precisa de atenção (loja fechada, impressora offline com pedidos esperando)
 
 - **Pedidos**: os pedidos chegam sozinhos (atualização a cada 5 s), com destaque para os novos e o status da impressão de cada um
+- **Cardápio**: categorias (criar, renomear, reordenar, ocultar), produtos com preço, setor de impressão, foto, destaque e complementos (grupos com mínimo e máximo), e um botão rápido de esgotado/disponível
 - **Loja**: abrir/fechar para pedidos, tempos de retirada e entrega, pedido mínimo do delivery, logo e capa
 - **Impressoras**: computadores conectados (online/offline), geração do código de pareamento e revogação
 
-O funcionário (`STAFF`) vê tudo, mas só o dono altera a loja e as impressoras.
+O funcionário (`STAFF`) vê tudo e pode marcar produtos como esgotados, mas só o dono edita o cardápio, a loja e as impressoras.
 
 ### Pareando o agente
 
@@ -251,7 +256,7 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [ ] Fotos dos produtos
 - [ ] Taxa de entrega por bairro e horário de funcionamento
 - [x] Painel do restaurante: pedidos em tempo real, loja e impressoras
-- [ ] Editor do cardápio no painel
+- [x] Editor do cardápio no painel
 - [ ] Pedidos em tempo real por WebSocket/SSE (hoje: atualização a cada 5 s)
 - [ ] Painel da cozinha (KDS)
 - [ ] Impressoras USB e Bluetooth

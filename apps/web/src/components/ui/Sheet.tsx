@@ -8,13 +8,15 @@ interface SheetProps {
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Painel mais largo (formulários do painel). */
+  wide?: boolean;
 }
 
 /**
  * Painel que sobe de baixo (padrão de apps de delivery no celular).
  * Fecha com Esc ou tocando fora; trava a rolagem da página por trás.
  */
-export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
+export function Sheet({ open, onClose, title, children, footer, wide = false }: SheetProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -42,7 +44,7 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-3xl bg-surface shadow-2xl ring-1 shadow-black ring-line outline-none sm:rounded-3xl"
+        className={`relative flex max-h-[92dvh] w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} flex-col rounded-t-3xl bg-surface shadow-2xl ring-1 shadow-black ring-line outline-none sm:rounded-3xl`}
       >
         <div className="flex items-start justify-between gap-4 border-b border-line px-5 pt-5 pb-3">
           <h2 id={titleId} className="font-display text-xl leading-tight font-semibold">

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { centsToInput, orderTypeLabel, parseBRL, timeAgo } from './panel';
+import { centsToInput, orderTypeLabel, parseBRL, summarizeToday, timeAgo } from './panel';
 
 describe('timeAgo', () => {
   const now = new Date('2026-11-10T20:00:00Z').getTime();
@@ -39,5 +39,23 @@ describe('parseBRL', () => {
   it('volta para o formato do campo', () => {
     assert.equal(centsToInput(3000), '30,00');
     assert.equal(parseBRL(centsToInput(123456)), 123456);
+  });
+});
+
+describe('summarizeToday', () => {
+  const now = new Date(2026, 10, 10, 15, 0, 0); // 10/11/2026 15:00 (horário local)
+  const at = (h: number, day = 10) => new Date(2026, 10, day, h, 0, 0).toISOString();
+
+  it('conta só os pedidos de hoje e calcula faturamento e ticket médio', () => {
+    const orders = [
+      { createdAt: at(9), totalCents: 3000 },
+      { createdAt: at(14), totalCents: 4500 },
+      { createdAt: at(23, 9), totalCents: 9999 }, // ontem
+    ];
+    assert.deepEqual(summarizeToday(orders, now), { count: 2, revenueCents: 7500, averageCents: 3750 });
+  });
+
+  it('sem pedidos hoje, tudo zerado', () => {
+    assert.deepEqual(summarizeToday([], now), { count: 0, revenueCents: 0, averageCents: 0 });
   });
 });
