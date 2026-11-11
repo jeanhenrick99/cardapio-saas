@@ -6,6 +6,7 @@ import { api, ApiError } from '@/lib/client-api';
 import { inputClass, primaryButton } from './styles';
 
 const DEMO = { email: 'demo@cardapio.dev', password: 'demo12345' };
+const DEMO_STAFF = { email: 'garcom@cardapio.dev', password: 'demo12345' };
 
 export function LoginForm() {
   const router = useRouter();
@@ -62,19 +63,28 @@ export function LoginForm() {
       </form>
 
       <div className="mt-8 rounded-xl border border-gold-deep/50 bg-gold/5 p-4 text-sm">
-        <p className="text-muted">Quer só conhecer o painel? Use a conta de demonstração:</p>
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => {
-            setEmail(DEMO.email);
-            setPassword(DEMO.password);
-            void login(DEMO);
-          }}
-          className="mt-3 w-full rounded-lg py-2 font-semibold text-gold ring-1 ring-gold-deep hover:ring-gold"
-        >
-          Entrar como demonstração
-        </button>
+        <p className="text-muted">Quer só conhecer o sistema? Use uma conta de demonstração:</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {[
+            { label: 'Entrar como dono', hint: 'Retaguarda + PDV', creds: DEMO },
+            { label: 'Entrar como garçom', hint: 'Só o PDV', creds: DEMO_STAFF },
+          ].map((d) => (
+            <button
+              key={d.label}
+              type="button"
+              disabled={loading}
+              onClick={() => {
+                setEmail(d.creds.email);
+                setPassword(d.creds.password);
+                void login(d.creds);
+              }}
+              className="rounded-lg px-3 py-2 text-left ring-1 ring-gold-deep hover:ring-gold disabled:opacity-60"
+            >
+              <span className="block font-semibold text-gold">{d.label}</span>
+              <span className="block text-xs text-muted">{d.hint}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

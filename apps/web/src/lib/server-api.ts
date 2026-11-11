@@ -23,3 +23,8 @@ export async function getMe(): Promise<Me | null> {
   if (!res.ok) throw new Error(`Falha ao carregar o usuário (HTTP ${res.status})`);
   return res.json() as Promise<Me>;
 }
+
+/** Endereço WebSocket da conexão ao vivo (http→ws, https→wss), derivado do API_URL do servidor. */
+export function liveUrl(): string {
+  return `${API_URL.replace(/^http/, 'ws')}/panel/live`;
+}

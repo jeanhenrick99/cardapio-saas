@@ -1,9 +1,6 @@
-import type { Metadata } from 'next';
-import { DeliveryBoard } from '@/components/panel/DeliveryBoard';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = { title: 'Delivery e retirada' };
-
-export default async function DeliveryPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  return <DeliveryBoard slug={slug} />;
+/** O Kanban de delivery agora fica no PDV. */
+export default async function OldDeliveryPage({ params }: { params: Promise<{ slug: string }> }) {
+  redirect(`/pdv/${(await params).slug}/delivery`);
 }

@@ -129,7 +129,7 @@ export function PdvScreen({ slug }: { slug: string }) {
       {/* ---------- Catálogo ---------- */}
       <section aria-label="Produtos" className="min-w-0">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-          <h1 className="font-display text-3xl font-semibold">PDV</h1>
+          <h1 className="font-display text-3xl font-semibold">Balcão</h1>
           <p className="text-xs text-muted">
             Atalhos: <kbd className="rounded bg-surface-2 px-1.5 ring-1 ring-line">/</kbd> busca ·{' '}
             <kbd className="rounded bg-surface-2 px-1.5 ring-1 ring-line">Enter</kbd> adiciona o primeiro

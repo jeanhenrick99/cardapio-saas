@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getMe } from '@/lib/server-api';
 
-/** Entrada do painel: leva ao primeiro restaurante do usuário. */
+/** Entrada depois do login: leva ao primeiro restaurante do usuário. */
 export default async function PanelIndex() {
   const me = await getMe();
   if (!me) redirect('/login');
@@ -14,5 +14,6 @@ export default async function PanelIndex() {
       </main>
     );
   }
-  redirect(`/painel/${first.slug}`);
+  // Dono entra na retaguarda; funcionário vai direto para o PDV.
+  redirect(first.role === 'OWNER' ? `/painel/${first.slug}` : `/pdv/${first.slug}`);
 }

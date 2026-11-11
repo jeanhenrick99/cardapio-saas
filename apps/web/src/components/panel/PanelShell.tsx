@@ -9,7 +9,6 @@ import { normalize } from '@/lib/search';
 import type { Me, Role, StoreSettings } from '@/lib/types';
 import { usePolling } from '@/lib/use-polling';
 import {
-  BikeIcon,
   BookIcon,
   ChevronIcon,
   ExternalIcon,
@@ -71,9 +70,7 @@ function ShellFrame({ me, slug, restaurantName, role, children }: Props) {
       {
         title: 'Vendas',
         items: [
-          { href: `${base}/pdv`, label: 'PDV', icon: PosIcon },
-          { href: `${base}/pedidos`, label: 'Pedidos', icon: ReceiptIcon },
-          { href: `${base}/delivery`, label: 'Delivery e retirada', icon: BikeIcon },
+          { href: `${base}/pedidos`, label: 'Histórico de pedidos', icon: ReceiptIcon },
         ],
       },
       { title: 'Cadastros', items: [{ href: `${base}/cardapio`, label: 'Cardápio', icon: BookIcon }] },
@@ -222,6 +219,17 @@ function ShellFrame({ me, slug, restaurantName, role, children }: Props) {
           </ul>
         )}
 
+        {/* Atalho para a operação */}
+        <div className="px-3 pt-3">
+          <Link
+            href={`/pdv/${slug}`}
+            className="flex items-center justify-center gap-2 rounded-xl bg-wine py-2.5 font-semibold text-fg ring-1 ring-gold/40 hover:bg-wine-hover"
+          >
+            <PosIcon className="h-5 w-5 text-gold" />
+            Abrir PDV
+          </Link>
+        </div>
+
         {/* Busca no menu */}
         <div className="px-3 pt-3">
           <label className="relative block">
@@ -326,6 +334,13 @@ function ShellFrame({ me, slug, restaurantName, role, children }: Props) {
                 <span className="hidden sm:inline">{open ? 'Loja aberta' : 'Loja fechada'}</span>
               </Link>
             )}
+            <Link
+              href={`/pdv/${slug}`}
+              className="flex items-center gap-1.5 rounded-lg bg-black/25 px-3 py-1.5 text-sm font-semibold text-gold-soft ring-1 ring-black/30 hover:bg-black/40"
+            >
+              <PosIcon className="h-5 w-5" />
+              <span className="hidden sm:inline">Abrir PDV</span>
+            </Link>
             <a
               href={`/r/${slug}`}
               target="_blank"

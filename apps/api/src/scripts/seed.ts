@@ -1,7 +1,7 @@
 /** Cria o restaurante e o usuário de demonstração (pode rodar quantas vezes quiser). */
 import { hashPassword } from '../auth/password';
 import { prisma } from '../db';
-import { DEMO_RESTAURANT, DEMO_USER } from './demo';
+import { DEMO_RESTAURANT, DEMO_STAFF, DEMO_USER } from './demo';
 import { DEMO_FEATURED, DEMO_MENU } from './demo-menu';
 
 const restaurant = await prisma.restaurant.upsert({
@@ -64,6 +64,18 @@ if ((await prisma.product.count({ where: { restaurantId: restaurant.id, featured
   console.log(`✔ ${count} produtos em destaque`);
 }
 
+const staff = await prisma.user.upsert({
+  where: { email: DEMO_STAFF.email },
+  update: {},
+  create: { name: DEMO_STAFF.name, email: DEMO_STAFF.email, passwordHash: await hashPassword(DEMO_STAFF.password) },
+});
+await prisma.membership.upsert({
+  where: { userId_restaurantId: { userId: staff.id, restaurantId: restaurant.id } },
+  update: {},
+  create: { userId: staff.id, restaurantId: restaurant.id, role: 'STAFF' },
+});
+
 console.log(`✔ Restaurante "${restaurant.name}" (slug: ${restaurant.slug})`);
 console.log(`✔ Usuário ${DEMO_USER.email} / senha ${DEMO_USER.password} (dono do restaurante)`);
+console.log(`✔ Usuário ${DEMO_STAFF.email} / senha ${DEMO_STAFF.password} (garçom: só PDV)`);
 await prisma.$disconnect();

@@ -4,14 +4,14 @@
 
 **Bistroo** é uma plataforma de cardápio digital e pedidos para restaurantes, com **impressão automática na cozinha** via um agente local que fala ESC/POS direto com as impressoras térmicas.
 
-> 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular** (mesa, retirada ou delivery), **painel do restaurante** (pedidos em tempo real, cardápio, loja, impressoras e QR Codes das mesas), API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
+> 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular** (mesa, retirada ou delivery), **retaguarda** (cardápio, loja, impressoras, QR Codes) e **PDV** separados (lançamento de pedidos e Kanban de delivery em tempo real), API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
 
 ## Demo ao vivo
 
 | | Link |
 |---|---|
 | 📱 Cardápio do cliente (mesa 7) | **https://bistroo-menu-chi.vercel.app/r/demo?mesa=7** |
-| 🧑‍🍳 Painel do restaurante | **https://bistroo-menu-chi.vercel.app/login** → *Entrar como demonstração* |
+| 🧑‍🍳 Retaguarda e PDV | **https://bistroo-menu-chi.vercel.app/login** → *Entrar como dono* ou *Entrar como garçom* |
 
 > O primeiro acesso pode levar ~1 minuto: a API roda no plano gratuito do Render e "dorme" sem uso.
 > Hospedagem: Vercel (site) + Render (API) + Neon (PostgreSQL). Veja o [guia de deploy](DEPLOY.md).
@@ -82,23 +82,32 @@ Abra **http://localhost:3000/r/demo?mesa=7** e faça um pedido como cliente da m
 
 > 📱 **Para testar no celular:** conecte-o no mesmo Wi-Fi e abra o endereço "Network" que o Next mostra ao iniciar (ex.: `http://192.168.0.10:3000/r/demo?mesa=7`). É exatamente o link que iria no QR Code da mesa.
 
-### Painel do restaurante
+### Retaguarda e PDV
 
-Abra **http://localhost:3000/login** e clique em **"Entrar como demonstração"** (ou use `demo@cardapio.dev` / `demo12345`).
+Abra **http://localhost:3000/login** e escolha uma conta de demonstração:
 
-O painel tem menu lateral (com busca por **Ctrl+K** e seções recolhíveis; no celular ele vira uma gaveta) e uma barra superior com o status da loja. As telas:
+| Conta | E-mail / senha | O que vê |
+|---|---|---|
+| **Dono** | `demo@cardapio.dev` / `demo12345` | Retaguarda + PDV |
+| **Garçom** | `garcom@cardapio.dev` / `demo12345` | Só o PDV |
+
+O sistema tem duas áreas, como nos sistemas de restaurante:
+
+**Retaguarda** (`/painel/<restaurante>`, só o dono): configurar e acompanhar o negócio. Menu lateral com busca (**Ctrl+K**) e seções recolhíveis (no celular vira gaveta), barra superior com o status da loja e o botão **Abrir PDV**.
 
 - **Início**: pedidos, faturamento e ticket médio do dia, mais atalhos que avisam o que precisa de atenção (loja fechada, impressora offline com pedidos esperando)
-
-- **Pedidos**: os pedidos chegam **na hora** (WebSocket), com destaque para os novos, campainha opcional, contador no título da aba e o status da impressão de cada um
-- **PDV**: a equipe lança pedidos de mesa, balcão (retirada) e telefone (delivery). Busca com `/` e Enter, produto sem complementos entra com um toque, e o telefone de um cliente que já pediu preenche nome e endereço. O pedido sai marcado como "PDV · lançado por <funcionário>" no painel e no cupom. "Loja fechada" e pedido mínimo valem só para o cardápio online
-- **Delivery e retirada**: quadro **Kanban** (Recebido → Em preparo → Pronto → Saiu para entrega → Concluído). No computador, arraste os cards; no celular, use os botões de cada pedido. Mostra há quanto tempo o pedido espera (alerta aos 30 e aos 45 min) e atualiza ao vivo para toda a equipe
+- **Histórico de pedidos**: os pedidos chegam **na hora** (WebSocket), com destaque para os novos, campainha opcional, contador no título da aba e o status da impressão de cada um
 - **Cardápio**: categorias (criar, renomear, reordenar, ocultar), produtos com preço, setor de impressão, foto, destaque e complementos (grupos com mínimo e máximo), e um botão rápido de esgotado/disponível
 - **Loja**: abrir/fechar para pedidos, tempos de retirada e entrega, pedido mínimo do delivery, logo e capa
 - **QR Codes das mesas**: gera uma folha para imprimir (A4) com um QR Code por mesa, cada um levando a `/r/<restaurante>?mesa=N`, mais um QR geral para retirada/delivery. Cada QR também pode ser baixado em SVG. Avisa quando o endereço é `localhost` (não abre no celular)
 - **Impressoras**: computadores conectados (online/offline), geração do código de pareamento e revogação
 
-O funcionário (`STAFF`) vê tudo e pode marcar produtos como esgotados, mas só o dono edita o cardápio, a loja e as impressoras.
+**PDV** (`/pdv/<restaurante>`, dono e equipe): a operação durante o expediente, em tela cheia com abas grandes (pensado para tablet ou monitor no balcão). Funcionário que entra é levado direto para cá e não acessa a retaguarda; o dono tem o botão **Retaguarda** para voltar.
+
+- **Balcão**: a equipe lança pedidos de mesa, balcão (retirada) e telefone (delivery). Busca com `/` e Enter, produto sem complementos entra com um toque, e o telefone de um cliente que já pediu preenche nome e endereço. O pedido sai marcado como "PDV · lançado por <funcionário>" no painel e no cupom. "Loja fechada" e pedido mínimo valem só para o cardápio online
+- **Delivery**: quadro **Kanban** (Recebido → Em preparo → Pronto → Saiu para entrega → Concluído). No computador, arraste os cards; no celular, use os botões de cada pedido. Mostra há quanto tempo o pedido espera (alerta aos 30 e aos 45 min) e atualiza ao vivo para toda a equipe
+
+O funcionário (`STAFF`) acessa só o PDV. Cardápio, loja, impressoras e faturamento ficam na retaguarda, com o dono.
 
 ### Pareando o agente
 
