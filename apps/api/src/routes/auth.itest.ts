@@ -224,3 +224,23 @@ describe('permissões por restaurante', () => {
     assert.ok(me.restaurants.some((r) => r.slug === slug));
   });
 });
+
+describe('atrás de proxy (produção)', () => {
+  it('com trustProxy, o limite de tentativas é por cliente, não pelo IP do proxy', async () => {
+    const proxied = await buildApp({ logger: false, trustProxy: true });
+    try {
+      const attempt = (clientIp: string) =>
+        proxied.inject({
+          method: 'POST',
+          url: '/auth/login',
+          headers: { 'x-test-rate-limit': '1', 'x-forwarded-for': clientIp },
+          payload: { email: 'alvo@teste.dev', password: 'errada!!' },
+        });
+      for (let i = 0; i < 10; i++) await attempt('203.0.113.1');
+      assert.equal((await attempt('203.0.113.1')).statusCode, 429, 'o atacante é bloqueado');
+      assert.equal((await attempt('198.51.100.7')).statusCode, 401, 'outro cliente continua podendo tentar');
+    } finally {
+      await proxied.close();
+    }
+  });
+});

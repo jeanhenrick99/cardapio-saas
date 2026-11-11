@@ -14,6 +14,14 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().default(8080),
   HOST: z.string().default('0.0.0.0'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  /**
+   * "true" quando a API fica atrás de um proxy (Vercel, Render...): usa o IP real
+   * do cliente (X-Forwarded-For) no limite de tentativas, em vez do IP do proxy.
+   */
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

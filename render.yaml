@@ -1,0 +1,19 @@
+# Blueprint do Render: cria o serviço da API a partir deste repositório.
+# Render → New → Blueprint → escolha o repositório. Veja DEPLOY.md.
+services:
+  - type: web
+    name: cardapio-api
+    runtime: docker
+    plan: free
+    region: virginia # mesma região do banco no Neon (AWS us-east-1) e da Vercel
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false # pedido na criação: cole a connection string do Neon
+      - key: TRUST_PROXY
+        value: "true"
+      - key: LOG_LEVEL
+        value: info

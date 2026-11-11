@@ -6,6 +6,10 @@ Plataforma de cardápio digital e pedidos para restaurantes, com **impressão au
 
 > 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular**, **painel do restaurante** (pedidos em tempo real, abrir/fechar a loja, impressoras) (mesa, retirada ou delivery), API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
 
+## Demo ao vivo
+
+> 🔗 Em breve: veja o [guia de deploy](DEPLOY.md) (Vercel + Render + Neon, todos gratuitos).
+
 ## Como funciona
 
 ```

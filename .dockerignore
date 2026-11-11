@@ -1,0 +1,9 @@
+**/node_modules
+**/.next
+**/.env
+**/dist
+.git
+.github
+apps/print-agent/data
+apps/print-agent/output
+apps/print-agent/agent.config.json

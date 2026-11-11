@@ -2,6 +2,7 @@ import { buildApp } from './app';
 import { env } from './env';
 
 const app = await buildApp({
+  trustProxy: env.TRUST_PROXY,
   logger: {
     level: env.LOG_LEVEL,
     // Logs legíveis no terminal durante o desenvolvimento; JSON puro em produção.
