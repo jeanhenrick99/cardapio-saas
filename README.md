@@ -1,14 +1,20 @@
-# 🍔 Cardápio SaaS
+# 🍽️ Bistroo
 
 [![CI](https://github.com/jeanhenrick99/cardapio-saas/actions/workflows/ci.yml/badge.svg)](https://github.com/jeanhenrick99/cardapio-saas/actions/workflows/ci.yml)
 
-Plataforma de cardápio digital e pedidos para restaurantes, com **impressão automática na cozinha** via um agente local que fala ESC/POS direto com as impressoras térmicas.
+**Bistroo** é uma plataforma de cardápio digital e pedidos para restaurantes, com **impressão automática na cozinha** via um agente local que fala ESC/POS direto com as impressoras térmicas.
 
-> 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular**, **painel do restaurante** (pedidos em tempo real, abrir/fechar a loja, impressoras) (mesa, retirada ou delivery), API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
+> 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular** (mesa, retirada ou delivery), **painel do restaurante** (pedidos em tempo real, cardápio, loja, impressoras e QR Codes das mesas), API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
 
 ## Demo ao vivo
 
-> 🔗 Em breve: veja o [guia de deploy](DEPLOY.md) (Vercel + Render + Neon, todos gratuitos).
+| | Link |
+|---|---|
+| 📱 Cardápio do cliente (mesa 7) | **https://bistroo-menu-chi.vercel.app/r/demo?mesa=7** |
+| 🧑‍🍳 Painel do restaurante | **https://bistroo-menu-chi.vercel.app/login** → *Entrar como demonstração* |
+
+> O primeiro acesso pode levar ~1 minuto: a API roda no plano gratuito do Render e "dorme" sem uso.
+> Hospedagem: Vercel (site) + Render (API) + Neon (PostgreSQL). Veja o [guia de deploy](DEPLOY.md).
 
 ## Como funciona
 

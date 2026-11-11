@@ -7,8 +7,9 @@ const display = Playfair_Display({ subsets: ['latin'], variable: '--font-playfai
 const sans = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: { default: 'Cardápio Digital', template: '%s · Cardápio Digital' },
-  description: 'Faça seu pedido pelo celular, direto da mesa.',
+  title: { default: 'Bistroo · Cardápio digital para restaurantes', template: '%s · Bistroo' },
+  description: 'Cardápio digital com pedidos pelo celular e impressão automática na cozinha.',
+  applicationName: 'Bistroo',
 };
 
 export const viewport: Viewport = {

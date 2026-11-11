@@ -1,10 +1,14 @@
 import Link from 'next/link';
+import { Brand } from '@/components/ui/Brand';
 
 export default function Home() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-6">
       <div className="h-px w-16 bg-gold" />
-      <h1 className="font-display text-4xl font-semibold tracking-tight">Cardápio Digital</h1>
+      <h1>
+        <Brand size="lg" />
+      </h1>
+      <p className="-mt-3 text-sm tracking-[0.3em] text-gold-soft uppercase">Cardápio digital para restaurantes</p>
       <p className="text-muted">
         O cliente escaneia o QR Code da mesa, monta o pedido pelo celular e ele sai impresso na cozinha na hora.
       </p>

@@ -177,6 +177,13 @@ export function MenuApp({ menu, table }: Props) {
         </>
       )}
 
+      <footer className="mt-16 border-t border-line pt-6 text-center text-xs text-muted">
+        Cardápio digital por{' '}
+        <a href="/" className="font-display text-sm font-semibold text-fg hover:text-gold">
+          Bistr<span className="text-gold">oo</span>
+        </a>
+      </footer>
+
       {count > 0 && !cartOpen && (
         <div className="fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
           <button
