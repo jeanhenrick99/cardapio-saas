@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Um push novo cancela a execução anterior do mesmo branch.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tipos, testes e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # PostgreSQL real para os testes de integração da API.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: cardapio
+          POSTGRES_PASSWORD: cardapio
+          POSTGRES_DB: cardapio
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cardapio -d cardapio"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar o Prisma Client
+        run: npm run db:generate -w @cardapio/api
+
+      - name: Checar tipos
+        run: npm run typecheck
+
+      - name: Testes unitários
+        run: npm test
+
+      - name: Testes de integração (API + PostgreSQL)
+        run: npm run test:integration
+
+      - name: Build do site
+        run: npm run build -w @cardapio/web

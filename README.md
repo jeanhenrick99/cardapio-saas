@@ -1,5 +1,7 @@
 # 🍔 Cardápio SaaS
 
+[![CI](https://github.com/jeanhenrick99/cardapio-saas/actions/workflows/ci.yml/badge.svg)](https://github.com/jeanhenrick99/cardapio-saas/actions/workflows/ci.yml)
+
 Plataforma de cardápio digital e pedidos para restaurantes, com **impressão automática na cozinha** via um agente local que fala ESC/POS direto com as impressoras térmicas.
 
 > 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular**, **painel do restaurante** (pedidos em tempo real, abrir/fechar a loja, impressoras) (mesa, retirada ou delivery), API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
@@ -203,6 +205,16 @@ curl -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/menu
 **ESC/POS escrito à mão.** Sem biblioteca de impressão: os comandos (`ESC @`, `ESC a`, `GS !`, `GS V`...) estão em [`escpos/encoder.ts`](apps/print-agent/src/escpos/encoder.ts). Impressoras térmicas não entendem UTF-8, então o texto é convertido para a **code page 860 (Português)**. Sem isso, "Pão" sai impresso como "PÃ£o".
 
 **Dinheiro em centavos.** Todos os valores são inteiros (`unitPriceCents`), evitando erros de ponto flutuante.
+
+## Integração contínua
+
+A cada push e pull request, o [GitHub Actions](.github/workflows/ci.yml) roda em uma máquina limpa:
+
+1. `npm ci` (instalação exata a partir do `package-lock.json`)
+2. Checagem de tipos de todos os pacotes
+3. Testes unitários (API, agente de impressão e site)
+4. Testes de integração da API contra um **PostgreSQL real** (serviço do próprio GitHub Actions)
+5. Build de produção do site
 
 ## Configurando impressoras reais
 
