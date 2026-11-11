@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { CheckoutSchema, type Order } from '@cardapio/shared';
+import { canTransition, CheckoutSchema, ORDER_STATUSES, statusLabel, type Order, type OrderType } from '@cardapio/shared';
 import type { AgentHub } from '../agents/hub';
 import { generatePairingCode, hashToken } from '../auth/tokens';
 import { prisma } from '../db';
@@ -94,16 +94,32 @@ export async function restaurantRoutes(app: FastifyInstance, { hub }: { hub: Age
    * Últimos pedidos com o status da impressão, para a tela de pedidos do painel.
    * O painel consulta esta rota a cada poucos segundos.
    */
+  /**
+   * Pedidos para o painel, com etapa e status da impressão.
+   *   ?view=board → quadro de delivery/retirada: os em andamento + os concluídos nas últimas 12 h
+   */
   app.get('/restaurants/:slug/orders', async (request, reply) => {
     const { slug } = SlugParams.parse(request.params);
     const restaurant = await loadRestaurantFor(request, reply, slug);
     if (!restaurant) return;
-    const { limit } = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50) }).parse(request.query);
+    const { limit, view } = z
+      .object({ limit: z.coerce.number().int().min(1).max(200).default(50), view: z.enum(['list', 'board']).default('list') })
+      .parse(request.query);
 
+    const board = view === 'board';
     const orders = await prisma.order.findMany({
-      where: { restaurantId: restaurant.id },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
+      where: board
+        ? {
+            restaurantId: restaurant.id,
+            type: { in: ['delivery', 'retirada'] },
+            OR: [
+              { status: { in: ['RECEIVED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'] } },
+              { status: 'COMPLETED', statusChangedAt: { gte: new Date(Date.now() - 12 * 60 * 60 * 1000) } },
+            ],
+          }
+        : { restaurantId: restaurant.id },
+      orderBy: { createdAt: board ? 'asc' : 'desc' },
+      take: board ? 200 : limit,
       include: { printJobs: { orderBy: { createdAt: 'desc' }, take: 1 } },
     });
     return orders.map((o) => {
@@ -112,9 +128,41 @@ export async function restaurantRoutes(app: FastifyInstance, { hub }: { hub: Age
       return {
         ...data,
         totalCents: o.totalCents,
+        status: o.status,
+        statusChangedAt: o.statusChangedAt,
         print: job ? { status: job.status, printers: job.printers, completedAt: job.completedAt } : null,
       };
     });
+  });
+
+  /**
+   * Muda a etapa do pedido (Kanban). Qualquer membro da equipe pode.
+   * As regras (avançar/voltar uma etapa, cancelar) são as mesmas do painel.
+   */
+  app.patch('/restaurants/:slug/orders/:id/status', async (request, reply) => {
+    const { slug, id } = z.object({ slug: z.string(), id: z.string().uuid() }).parse(request.params);
+    const restaurant = await loadRestaurantFor(request, reply, slug);
+    if (!restaurant) return;
+    const { status } = z.object({ status: z.enum(ORDER_STATUSES) }).parse(request.body);
+
+    const order = await prisma.order.findFirst({ where: { id, restaurantId: restaurant.id }, select: { type: true, status: true } });
+    if (!order) return reply.code(404).send({ error: 'Pedido não encontrado' });
+    const type = order.type as OrderType;
+    if (!canTransition(type, order.status, status)) {
+      return reply.code(409).send({
+        error: `Não é possível mudar de "${statusLabel(order.status, type)}" para "${statusLabel(status, type)}"`,
+      });
+    }
+
+    // Só atualiza se ninguém mudou o pedido nesse meio tempo (dois funcionários no mesmo quadro).
+    const { count } = await prisma.order.updateMany({
+      where: { id, restaurantId: restaurant.id, status: order.status },
+      data: { status, statusChangedAt: new Date() },
+    });
+    if (count === 0) return reply.code(409).send({ error: 'O pedido foi alterado por outra pessoa. A tela foi atualizada.' });
+
+    hub.panel.publish(restaurant.id, { type: 'order_status', orderId: id, status });
+    return { id, status };
   });
 
   /** Abre/fecha o restaurante e ajusta tempos, pedido mínimo e imagens. Só o dono. */

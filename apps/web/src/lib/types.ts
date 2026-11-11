@@ -1,4 +1,4 @@
-import type { Order } from '@cardapio/shared';
+import type { Order, OrderStatus } from '@cardapio/shared';
 
 export type Role = 'OWNER' | 'STAFF';
 
@@ -13,6 +13,8 @@ export type PrintStatus = 'QUEUED' | 'SENT' | 'PRINTED' | 'FAILED';
 
 export interface PanelOrder extends Order {
   totalCents: number;
+  status: OrderStatus;
+  statusChangedAt: string;
   print: {
     status: PrintStatus;
     printers: { name: string; status: 'printed' | 'failed'; error?: string }[] | null;

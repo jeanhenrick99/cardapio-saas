@@ -9,6 +9,7 @@ import { normalize } from '@/lib/search';
 import type { Me, Role, StoreSettings } from '@/lib/types';
 import { usePolling } from '@/lib/use-polling';
 import {
+  BikeIcon,
   BookIcon,
   ChevronIcon,
   ExternalIcon,
@@ -66,7 +67,13 @@ function ShellFrame({ me, slug, restaurantName, role, children }: Props) {
   const sections: NavSection[] = useMemo(
     () => [
       { items: [{ href: base, label: 'Início', icon: HomeIcon }] },
-      { title: 'Vendas', items: [{ href: `${base}/pedidos`, label: 'Pedidos', icon: ReceiptIcon }] },
+      {
+        title: 'Vendas',
+        items: [
+          { href: `${base}/pedidos`, label: 'Pedidos', icon: ReceiptIcon },
+          { href: `${base}/delivery`, label: 'Delivery e retirada', icon: BikeIcon },
+        ],
+      },
       { title: 'Cadastros', items: [{ href: `${base}/cardapio`, label: 'Cardápio', icon: BookIcon }] },
       {
         title: 'Configurações',

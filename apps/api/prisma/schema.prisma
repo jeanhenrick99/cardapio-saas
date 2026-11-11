@@ -120,11 +120,24 @@ model Order {
   /// Snapshot completo do pedido (itens, adicionais, cliente) no formato do pacote shared.
   data         Json
   createdAt    DateTime @default(now())
+  /// Etapa do pedido (Kanban). As regras de mudança ficam em packages/shared/src/order-status.ts.
+  status          OrderStatus @default(RECEIVED)
+  statusChangedAt DateTime    @default(now())
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   printJobs  PrintJob[]
 
   @@unique([restaurantId, number])
+  @@index([restaurantId, status])
+}
+
+enum OrderStatus {
+  RECEIVED
+  PREPARING
+  READY
+  OUT_FOR_DELIVERY
+  COMPLETED
+  CANCELED
 }
 
 enum PrintJobStatus {

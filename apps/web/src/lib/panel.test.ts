@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { centsToInput, orderTypeLabel, parseBRL, summarizeToday, timeAgo } from './panel';
+import { centsToInput, itemsSummary, orderTypeLabel, parseBRL, summarizeToday, timeAgo, waitingLevel } from './panel';
 
 describe('timeAgo', () => {
   const now = new Date('2026-11-10T20:00:00Z').getTime();
@@ -57,5 +57,20 @@ describe('summarizeToday', () => {
 
   it('sem pedidos hoje, tudo zerado', () => {
     assert.deepEqual(summarizeToday([], now), { count: 0, revenueCents: 0, averageCents: 0 });
+  });
+});
+
+describe('waitingLevel e itemsSummary', () => {
+  const now = new Date('2026-11-11T20:00:00Z').getTime();
+  const ago = (min: number) => new Date(now - min * 60_000).toISOString();
+
+  it('alerta aos 30 min e atraso aos 45 min', () => {
+    assert.deepEqual(waitingLevel(ago(10), now), { minutes: 10, level: 'ok' });
+    assert.deepEqual(waitingLevel(ago(30), now), { minutes: 30, level: 'warn' });
+    assert.deepEqual(waitingLevel(ago(50), now), { minutes: 50, level: 'late' });
+  });
+
+  it('resume os itens', () => {
+    assert.equal(itemsSummary([{ quantity: 2, name: 'X-Burguer' }, { quantity: 1, name: 'Coca' }]), '2x X-Burguer, 1x Coca');
   });
 });

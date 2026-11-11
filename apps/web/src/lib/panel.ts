@@ -51,3 +51,14 @@ export function summarizeToday(orders: { createdAt: string; totalCents: number }
     averageCents: today.length ? Math.round(revenueCents / today.length) : 0,
   };
 }
+
+/** Minutos desde o pedido e o nível de alerta (para pedidos ainda em andamento). */
+export function waitingLevel(createdAt: string, now: number = Date.now()): { minutes: number; level: 'ok' | 'warn' | 'late' } {
+  const minutes = Math.max(0, Math.floor((now - new Date(createdAt).getTime()) / 60_000));
+  return { minutes, level: minutes >= 45 ? 'late' : minutes >= 30 ? 'warn' : 'ok' };
+}
+
+/** Resumo curto dos itens para o card: "2x X-Burguer, 1x Coca-Cola". */
+export function itemsSummary(items: { quantity: number; name: string }[]): string {
+  return items.map((i) => `${i.quantity}x ${i.name}`).join(', ');
+}

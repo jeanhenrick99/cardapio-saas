@@ -91,6 +91,7 @@ O painel tem menu lateral (com busca por **Ctrl+K** e seções recolhíveis; no 
 - **Início**: pedidos, faturamento e ticket médio do dia, mais atalhos que avisam o que precisa de atenção (loja fechada, impressora offline com pedidos esperando)
 
 - **Pedidos**: os pedidos chegam **na hora** (WebSocket), com destaque para os novos, campainha opcional, contador no título da aba e o status da impressão de cada um
+- **Delivery e retirada**: quadro **Kanban** (Recebido → Em preparo → Pronto → Saiu para entrega → Concluído). No computador, arraste os cards; no celular, use os botões de cada pedido. Mostra há quanto tempo o pedido espera (alerta aos 30 e aos 45 min) e atualiza ao vivo para toda a equipe
 - **Cardápio**: categorias (criar, renomear, reordenar, ocultar), produtos com preço, setor de impressão, foto, destaque e complementos (grupos com mínimo e máximo), e um botão rápido de esgotado/disponível
 - **Loja**: abrir/fechar para pedidos, tempos de retirada e entrega, pedido mínimo do delivery, logo e capa
 - **QR Codes das mesas**: gera uma folha para imprimir (A4) com um QR Code por mesa, cada um levando a `/r/<restaurante>?mesa=N`, mais um QR geral para retirada/delivery. Cada QR também pode ser baixado em SVG. Avisa quando o endereço é `localhost` (não abre no celular)
@@ -186,6 +187,8 @@ curl -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/menu
 **Site e API no mesmo endereço.** O navegador chama `/api/*` no próprio site, e o Next repassa para a API ([`next.config.ts`](apps/web/next.config.ts)). Não precisa de CORS, e o cookie de sessão (que o painel vai usar) funciona com `SameSite=Lax`. O cardápio é carregado no servidor (React Server Component), então a página já chega pronta no celular.
 
 **Carrinho que sobrevive a recarregar a página.** O carrinho fica salvo no celular (`localStorage`). Ao voltar, ele é conferido com o cardápio atual: itens que saíram são removidos e os preços são atualizados. A lógica do carrinho fica em funções puras ([`lib/cart.ts`](apps/web/src/lib/cart.ts)), testadas sem navegador. A interface valida mínimo e máximo dos complementos para dar resposta imediata ao cliente, mas quem decide é sempre o servidor.
+
+**Etapas do pedido com regras compartilhadas.** O fluxo (delivery passa por "saiu para entrega"; retirada e mesa não; avançar ou voltar uma etapa; cancelar é definitivo) fica em [`order-status.ts`](packages/shared/src/order-status.ts), usado pela API para validar e pelo painel para mostrar só as colunas e botões permitidos. A mudança de etapa só é gravada se o pedido ainda estiver na etapa que o funcionário viu (`UPDATE ... WHERE status = <etapa lida>`): com dois funcionários clicando ao mesmo tempo, só um vence e o outro recebe um aviso. Um teste de integração dispara 5 cliques simultâneos para garantir isso.
 
 **Fotos comprimidas no navegador e guardadas no banco.** O painel reduz cada foto para no máximo 1200 px e converte para WebP antes de enviar (uma foto de celular de 3,4 MB vira ~130 KB). Como o disco do servidor gratuito é apagado a cada deploy, as fotos ficam numa tabela do PostgreSQL, atrás de um módulo ([`images/storage.ts`](apps/api/src/images/storage.ts)) que permite trocar por S3/R2/Cloudinary mexendo em um lugar só. A API confere o tipo real do arquivo pelos primeiros bytes (um `.txt` ou um SVG com script renomeado para `.png` é recusado), limita o tamanho e serve cada foto com cache de 1 ano (`immutable`), já que toda foto nova ganha um endereço novo.
 
@@ -285,6 +288,9 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [x] Painel do restaurante: pedidos em tempo real, loja e impressoras
 - [x] Editor do cardápio no painel
 - [x] Pedidos em tempo real por WebSocket, com campainha e reconexão automática
+- [x] Etapas do pedido e Kanban de delivery/retirada
+- [ ] PDV para a equipe lançar pedidos (balcão, telefone, mesas)
+- [ ] Mesas com comanda aberta e fechamento de conta
 - [ ] Painel da cozinha (KDS)
 - [ ] Impressoras USB e Bluetooth
 - [ ] Instalador `.exe` com ícone na bandeja

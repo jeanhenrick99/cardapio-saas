@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { formatBRL, itemTotalCents } from '@cardapio/shared';
+import { formatBRL, itemTotalCents, statusLabel } from '@cardapio/shared';
 import { orderTypeLabel, PRINT_STATUS, timeAgo } from '@/lib/panel';
 import type { PanelOrder } from '@/lib/types';
 import { playChime, unlockAudio } from '@/lib/chime';
@@ -136,7 +136,12 @@ export function OrdersBoard({ slug }: { slug: string }) {
                     <span className="font-display text-2xl font-semibold text-gold">#{String(order.number).padStart(4, '0')}</span>
                     {isNew && <span className="rounded-full bg-gold px-2 py-0.5 text-[11px] font-bold text-black uppercase">Novo</span>}
                   </div>
-                  <div className="text-xs text-muted">{timeAgo(order.createdAt)}</div>
+                  <div className="text-xs text-muted">
+                    {timeAgo(order.createdAt)} ·{' '}
+                    <span className={order.status === 'CANCELED' ? 'text-red-300' : order.status === 'COMPLETED' ? 'text-emerald-300' : 'text-gold-soft'}>
+                      {statusLabel(order.status, order.type)}
+                    </span>
+                  </div>
                 </div>
                 <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold tracking-wide uppercase ring-1 ring-line">
                   {orderTypeLabel(order)}

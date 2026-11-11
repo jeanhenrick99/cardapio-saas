@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { OrderSchema } from './order';
+import type { OrderStatus } from './order-status';
 
 /**
  * Protocolo WebSocket entre o servidor (nuvem) e o agente de impressão (PC do restaurante).
@@ -110,6 +111,7 @@ export type PanelEvent =
   | { type: 'ready' }
   | { type: 'order_created'; orderId: string; number: number }
   | { type: 'order_updated'; orderId: string; printStatus: 'PRINTED' | 'FAILED' }
+  | { type: 'order_status'; orderId: string; status: OrderStatus }
   | { type: 'agents_changed' }
   | { type: 'store_updated' };
 

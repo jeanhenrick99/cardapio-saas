@@ -108,6 +108,22 @@ describe('painel ao vivo: eventos', () => {
     panelB.ws.close();
   });
 
+  it('avisa quando um pedido muda de etapa (Kanban)', async () => {
+    const owner = await signup(app);
+    const productId = await createSimpleProduct(app, owner);
+    const panel = await openPanel(owner);
+    await app.inject({ method: 'POST', url: `/public/restaurants/${owner.slug}/orders`, payload: tableOrder(productId) });
+    const { orderId } = (await panel.waitFor((m) => m.type === 'order_created')) as { orderId: string };
+    await app.inject({
+      method: 'PATCH',
+      url: `/restaurants/${owner.slug}/orders/${orderId}/status`,
+      headers: auth(owner.token),
+      payload: { status: 'PREPARING' },
+    });
+    assert.deepEqual(await panel.waitFor((m) => m.type === 'order_status'), { type: 'order_status', orderId, status: 'PREPARING' });
+    panel.ws.close();
+  });
+
   it('avisa quando a loja é aberta/fechada', async () => {
     const owner = await signup(app);
     const panel = await openPanel(owner);
