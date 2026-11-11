@@ -128,3 +128,27 @@ export interface SalesReportResponse extends SalesReport {
     differenceCents: number | null;
   }[];
 }
+
+export interface TeamMember {
+  userId: string;
+  name: string;
+  email: string;
+  role: Role;
+  since: string;
+  isYou: boolean;
+  canResetPassword: boolean;
+}
+
+export interface PendingInvite {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  expiresAt: string;
+  createdBy: string;
+}
+
+export interface TeamResponse {
+  members: TeamMember[];
+  invites: PendingInvite[];
+}

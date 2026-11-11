@@ -20,7 +20,7 @@ const LoginBody = z.object({
   password: z.string().min(1).max(200),
 });
 
-async function startSession(request: FastifyRequest, reply: FastifyReply, userId: string) {
+export async function startSession(request: FastifyRequest, reply: FastifyReply, userId: string) {
   const { token, expiresAt } = await createSession(prisma, userId, request.headers['user-agent']);
   reply.setCookie(SESSION_COOKIE, token, {
     httpOnly: true, // inacessível ao JavaScript da página (protege contra XSS)
@@ -32,7 +32,7 @@ async function startSession(request: FastifyRequest, reply: FastifyReply, userId
   return { token, expiresAt };
 }
 
-async function loadMe(userId: string) {
+export async function loadMe(userId: string) {
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
     select: {

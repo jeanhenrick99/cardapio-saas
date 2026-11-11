@@ -100,6 +100,7 @@ O sistema tem duas áreas, como nos sistemas de restaurante:
 - **Histórico de pedidos**: os pedidos chegam **na hora** (WebSocket), com destaque para os novos, campainha opcional, contador no título da aba e o status da impressão de cada um
 - **Cardápio**: categorias (criar, renomear, reordenar, ocultar), produtos com preço, setor de impressão, foto, destaque e complementos (grupos com mínimo e máximo), e um botão rápido de esgotado/disponível
 - **Loja**: abrir/fechar para pedidos, tempos de retirada e entrega, pedido mínimo do delivery, quantidade de mesas, taxa de serviço, logo e capa
+- **Equipe**: o dono convida funcionários (ou outro dono) por **link de convite**, que pode ser enviado pelo WhatsApp: a pessoa abre, cria a própria senha e já entra. Se o e-mail já tem conta no Bistroo, ela confirma com a senha e ganha o restaurante novo. Também dá para trocar o papel, remover o acesso e gerar um link de **nova senha** para um funcionário
 - **QR Codes das mesas**: gera uma folha para imprimir (A4) com um QR Code por mesa, cada um levando a `/r/<restaurante>?mesa=N`, mais um QR geral para retirada/delivery. Cada QR também pode ser baixado em SVG. Avisa quando o endereço é `localhost` (não abre no celular)
 - **Impressoras**: computadores conectados (online/offline), geração do código de pareamento e revogação
 
@@ -239,6 +240,10 @@ curl -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/menu
 
 **Testes de integração com banco real.** Os testes sobem a API com `fastify.inject` contra um PostgreSQL de verdade (`cardapio_test`) e cobrem cadastro, login, sessão expirada, força bruta, isolamento entre restaurantes, papéis e numeração de pedidos sob concorrência. Cada teste cria dados únicos, então não é preciso apagar o banco entre execuções.
 
+**Convites e nova senha por link, sem e-mail.** O link leva um token aleatório; o banco guarda só o hash (como sessões e pareamento). O convite vale 7 dias e o link de senha 24 h, os dois de uso único e consumidos de forma atômica (dois cliques em "Aceitar" criam uma conta só). Convidar de novo o mesmo e-mail invalida o link anterior. A página do link não repassa o endereço para outros sites (`Referrer-Policy: no-referrer`). Trocar a senha encerra todas as sessões abertas. Por segurança, o dono só gera nova senha para funcionários que participam apenas do restaurante dele.
+
+**O restaurante nunca fica sem dono.** Rebaixar ou remover um dono conta os donos com as linhas travadas (`FOR UPDATE`): dois donos rebaixando um ao outro ao mesmo tempo resultam em um aceito e um recusado, testado com requisições simultâneas.
+
 **Revogação imediata.** Revogar um agente o desconecta na hora; ele para de tentar reconectar e orienta a parear de novo.
 
 **Fila persistente local.** Se o PC desligar ou a impressora ficar sem papel, nada se perde. Cada impressora tem sua linha na fila, com retentativas e backoff exponencial; uma impressora com problema não trava as outras.
@@ -307,7 +312,7 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [x] Pedido público com preço calculado no servidor
 - [x] Cardápio web do cliente (mesa, retirada e delivery)
 - [x] Gerador de QR Code das mesas
-- [ ] Convite de funcionários por e-mail
+- [x] Equipe: convite por link, papéis, remoção de acesso e nova senha
 - [x] Fotos dos produtos, logo e capa (enviadas pelo painel)
 - [ ] Taxa de entrega por bairro e horário de funcionamento
 - [x] Painel do restaurante: pedidos em tempo real, loja e impressoras

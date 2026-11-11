@@ -24,3 +24,8 @@ export function normalizePairingCode(input: string): string | null {
   if (raw.length !== 6 || [...raw].some((c) => !CODE_ALPHABET.includes(c))) return null;
   return `${raw.slice(0, 3)}-${raw.slice(3)}`;
 }
+
+/** Token de link (convite, redefinição de senha). Vai na URL; o banco guarda só o hash. */
+export function generateLinkToken(prefix: 'inv' | 'rst'): string {
+  return `${prefix}_${randomBytes(24).toString('base64url')}`;
+}

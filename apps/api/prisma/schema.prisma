@@ -39,6 +39,7 @@ model Restaurant {
   images        Image[]
   tabs          Tab[]
   cashRegisters CashRegister[]
+  invites       Invite[]
 }
 
 model User {
@@ -50,8 +51,9 @@ model User {
   passwordHash String
   createdAt    DateTime @default(now())
 
-  sessions    Session[]
-  memberships Membership[]
+  sessions       Session[]
+  memberships    Membership[]
+  passwordResets PasswordReset[]
 }
 
 /// Sessão de login. Como nos agentes, guardamos só o hash do token.
@@ -378,4 +380,39 @@ model TabPayment {
   tab Tab @relation(fields: [tabId], references: [id], onDelete: Cascade)
 
   @@index([tabId])
+}
+
+/// Convite para a equipe: link de uso único (o banco guarda só o hash do token).
+model Invite {
+  id           String    @id @default(uuid())
+  restaurantId String
+  /// Sempre em minúsculas. Quem aceita entra com este e-mail.
+  email        String
+  name         String
+  role         Role      @default(STAFF)
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  createdBy    String
+  acceptedAt   DateTime?
+  revokedAt    DateTime?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+}
+
+/// Link de redefinição de senha gerado pelo dono para um funcionário.
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  createdBy String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

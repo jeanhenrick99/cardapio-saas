@@ -17,6 +17,7 @@ import {
   MenuIcon,
   PosIcon,
   ChartIcon,
+  UsersIcon,
   PrinterIcon,
   QrIcon,
   ReceiptIcon,
@@ -80,6 +81,7 @@ function ShellFrame({ me, slug, restaurantName, role, children }: Props) {
         title: 'Configurações',
         items: [
           { href: `${base}/loja`, label: 'Loja', icon: StoreIcon },
+          { href: `${base}/equipe`, label: 'Equipe', icon: UsersIcon },
           { href: `${base}/impressoras`, label: 'Impressoras', icon: PrinterIcon },
           { href: `${base}/qrcodes`, label: 'QR Codes das mesas', icon: QrIcon },
         ],

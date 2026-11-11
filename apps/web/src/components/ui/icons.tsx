@@ -116,3 +116,10 @@ export const PosIcon = ({ className }: Props) => (
     <path d="M8 7h8M3 21h18l-1.5-5h-15L3 21zM9 18.5h6" />
   </svg>
 );
+
+export const UsersIcon = ({ className }: Props) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden {...base}>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.8.7 3 2.4 3.5 5.2" />
+  </svg>
+);

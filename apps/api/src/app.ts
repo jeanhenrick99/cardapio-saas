@@ -15,6 +15,7 @@ import { publicRoutes } from './routes/public';
 import { restaurantRoutes } from './routes/restaurants';
 import { cashRoutes } from './routes/cash';
 import { reportRoutes } from './routes/reports';
+import { teamRoutes } from './routes/team';
 import { tabRoutes } from './routes/tabs';
 
 export async function buildApp(opts: FastifyServerOptions = {}) {
@@ -57,6 +58,7 @@ export async function buildApp(opts: FastifyServerOptions = {}) {
   await app.register(tabRoutes, { hub });
   await app.register(cashRoutes, { hub });
   await app.register(reportRoutes);
+  await app.register(teamRoutes);
   await app.register(publicRoutes, { hub });
   await app.register(agentRoutes, { hub });
 
