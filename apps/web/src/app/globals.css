@@ -42,3 +42,14 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Impressão (folha de QR Codes): página branca, cartões mantêm as cores. */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  body {
+    background: #fff;
+  }
+}

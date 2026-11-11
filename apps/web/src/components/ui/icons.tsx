@@ -103,3 +103,9 @@ export const ChartIcon = ({ className }: Props) => (
     <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
   </svg>
 );
+
+export const QrIcon = ({ className }: Props) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden {...base}>
+    <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2M14 18h2v2M18 18h2v2h-2" />
+  </svg>
+);

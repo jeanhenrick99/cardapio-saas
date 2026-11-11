@@ -83,6 +83,7 @@ O painel tem menu lateral (com busca por **Ctrl+K** e seções recolhíveis; no 
 - **Pedidos**: os pedidos chegam sozinhos (atualização a cada 5 s), com destaque para os novos e o status da impressão de cada um
 - **Cardápio**: categorias (criar, renomear, reordenar, ocultar), produtos com preço, setor de impressão, foto, destaque e complementos (grupos com mínimo e máximo), e um botão rápido de esgotado/disponível
 - **Loja**: abrir/fechar para pedidos, tempos de retirada e entrega, pedido mínimo do delivery, logo e capa
+- **QR Codes das mesas**: gera uma folha para imprimir (A4) com um QR Code por mesa, cada um levando a `/r/<restaurante>?mesa=N`, mais um QR geral para retirada/delivery. Cada QR também pode ser baixado em SVG. Avisa quando o endereço é `localhost` (não abre no celular)
 - **Impressoras**: computadores conectados (online/offline), geração do código de pareamento e revogação
 
 O funcionário (`STAFF`) vê tudo e pode marcar produtos como esgotados, mas só o dono edita o cardápio, a loja e as impressoras.
@@ -263,7 +264,7 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [x] Cardápio com categorias, produtos e complementos
 - [x] Pedido público com preço calculado no servidor
 - [x] Cardápio web do cliente (mesa, retirada e delivery)
-- [ ] Gerador de QR Code das mesas
+- [x] Gerador de QR Code das mesas
 - [ ] Convite de funcionários por e-mail
 - [ ] Fotos dos produtos
 - [ ] Taxa de entrega por bairro e horário de funcionamento

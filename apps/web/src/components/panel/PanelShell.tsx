@@ -15,6 +15,7 @@ import {
   LogoutIcon,
   MenuIcon,
   PrinterIcon,
+  QrIcon,
   ReceiptIcon,
   SearchIcon,
   StoreIcon,
@@ -61,6 +62,7 @@ export function PanelShell({ me, slug, restaurantName, role, children }: Props) 
         items: [
           { href: `${base}/loja`, label: 'Loja', icon: StoreIcon },
           { href: `${base}/impressoras`, label: 'Impressoras', icon: PrinterIcon },
+          { href: `${base}/qrcodes`, label: 'QR Codes das mesas', icon: QrIcon },
         ],
       },
     ],
@@ -157,7 +159,7 @@ export function PanelShell({ me, slug, restaurantName, role, children }: Props) 
       {/* ---------- Menu lateral ---------- */}
       <aside
         aria-label="Menu do painel"
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-line bg-surface transition-transform duration-200 lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0 ${
+        className={`print:hidden fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-line bg-surface transition-transform duration-200 lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0 ${
           drawerOpen ? 'translate-x-0' : '-translate-x-full'
         } ${collapsed ? 'lg:hidden' : ''}`}
       >
@@ -274,7 +276,7 @@ export function PanelShell({ me, slug, restaurantName, role, children }: Props) 
 
       {/* ---------- Conteúdo ---------- */}
       <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 bg-wine px-3 text-fg shadow-lg shadow-black/40 sm:px-5">
+        <header className="print:hidden sticky top-0 z-20 flex h-16 items-center gap-3 bg-wine px-3 text-fg shadow-lg shadow-black/40 sm:px-5">
           <button
             onClick={toggleMenu}
             aria-label="Mostrar ou esconder o menu"
@@ -308,7 +310,7 @@ export function PanelShell({ me, slug, restaurantName, role, children }: Props) 
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-8">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-8 print:max-w-none print:p-0">{children}</main>
       </div>
     </div>
   );
