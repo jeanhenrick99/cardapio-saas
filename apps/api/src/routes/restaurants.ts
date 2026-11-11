@@ -23,6 +23,8 @@ const SettingsBody = z
     pickupMinutes: z.number().int().min(0).max(600),
     deliveryMinutes: z.number().int().min(0).max(600),
     minOrderCents: z.number().int().min(0).max(10_000_000),
+    tableCount: z.number().int().min(0).max(500),
+    serviceFeePercent: z.number().int().min(0).max(30),
   })
   .partial();
 const AgentParams = SlugParams.extend({ agentId: z.string().uuid() });
@@ -162,6 +164,7 @@ export async function restaurantRoutes(app: FastifyInstance, { hub }: { hub: Age
     if (count === 0) return reply.code(409).send({ error: 'O pedido foi alterado por outra pessoa. A tela foi atualizada.' });
 
     hub.panel.publish(restaurant.id, { type: 'order_status', orderId: id, status });
+    if (type === 'mesa' || type === 'comanda') hub.panel.publish(restaurant.id, { type: 'tabs_changed' });
     return { id, status };
   });
 

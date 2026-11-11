@@ -4,7 +4,7 @@
 
 **Bistroo** é uma plataforma de cardápio digital e pedidos para restaurantes, com **impressão automática na cozinha** via um agente local que fala ESC/POS direto com as impressoras térmicas.
 
-> 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular** (mesa, retirada ou delivery), **retaguarda** (cardápio, loja, impressoras, QR Codes) e **PDV** separados (lançamento de pedidos e Kanban de delivery em tempo real), API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
+> 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular** (mesa, retirada ou delivery), **retaguarda** (cardápio, loja, impressoras, QR Codes) e **PDV** separados (mesas e comandas com conta aberta e fechamento, lançamento de pedidos e Kanban de delivery em tempo real), API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
 
 ## Demo ao vivo
 
@@ -98,13 +98,17 @@ O sistema tem duas áreas, como nos sistemas de restaurante:
 - **Início**: pedidos, faturamento e ticket médio do dia, mais atalhos que avisam o que precisa de atenção (loja fechada, impressora offline com pedidos esperando)
 - **Histórico de pedidos**: os pedidos chegam **na hora** (WebSocket), com destaque para os novos, campainha opcional, contador no título da aba e o status da impressão de cada um
 - **Cardápio**: categorias (criar, renomear, reordenar, ocultar), produtos com preço, setor de impressão, foto, destaque e complementos (grupos com mínimo e máximo), e um botão rápido de esgotado/disponível
-- **Loja**: abrir/fechar para pedidos, tempos de retirada e entrega, pedido mínimo do delivery, logo e capa
+- **Loja**: abrir/fechar para pedidos, tempos de retirada e entrega, pedido mínimo do delivery, quantidade de mesas, taxa de serviço, logo e capa
 - **QR Codes das mesas**: gera uma folha para imprimir (A4) com um QR Code por mesa, cada um levando a `/r/<restaurante>?mesa=N`, mais um QR geral para retirada/delivery. Cada QR também pode ser baixado em SVG. Avisa quando o endereço é `localhost` (não abre no celular)
 - **Impressoras**: computadores conectados (online/offline), geração do código de pareamento e revogação
 
 **PDV** (`/pdv/<restaurante>`, dono e equipe): a operação durante o expediente, em tela cheia com abas grandes (pensado para tablet ou monitor no balcão). Funcionário que entra é levado direto para cá e não acessa a retaguarda; o dono tem o botão **Retaguarda** para voltar.
 
-- **Balcão**: a equipe lança pedidos de mesa, balcão (retirada) e telefone (delivery). Busca com `/` e Enter, produto sem complementos entra com um toque, e o telefone de um cliente que já pediu preenche nome e endereço. O pedido sai marcado como "PDV · lançado por <funcionário>" no painel e no cupom. "Loja fechada" e pedido mínimo valem só para o cardápio online
+- **Mesas**: grade com as mesas cadastradas na Loja. Mesa livre ou ocupada, com o consumo e há quanto tempo está aberta. Tocar numa mesa abre a **conta**: o primeiro lançamento abre a conta, os seguintes somam nela, e o pedido que o cliente faz pelo **QR Code da mesa** entra na mesma conta, ao vivo
+- **Comandas**: mesma ideia, para o cartão/comanda individual: digite o número para abrir. O cliente não abre comanda pelo cardápio online, só a equipe
+- **Fechar conta**: resumo do consumo (pedidos cancelados não entram), taxa de serviço opcional (10% por padrão, configurável), desconto e forma de pagamento. A mesa fica livre e as contas fechadas nas últimas 12 h aparecem abaixo da grade
+- **Disponibilidade**: no catálogo do PDV, a equipe marca um produto como **esgotado** com um toque, e ele some do cardápio do cliente na hora
+- **Balcão**: pedidos de balcão (retirada) e telefone (delivery). Busca com `/` e Enter, produto sem complementos entra com um toque, e o telefone de um cliente que já pediu preenche nome e endereço. O pedido sai marcado como "PDV · lançado por <funcionário>" no painel e no cupom. "Loja fechada" e pedido mínimo valem só para o cardápio online
 - **Delivery**: quadro **Kanban** (Recebido → Em preparo → Pronto → Saiu para entrega → Concluído). No computador, arraste os cards; no celular, use os botões de cada pedido. Mostra há quanto tempo o pedido espera (alerta aos 30 e aos 45 min) e atualiza ao vivo para toda a equipe
 
 O funcionário (`STAFF`) acessa só o PDV. Cardápio, loja, impressoras e faturamento ficam na retaguarda, com o dono.
@@ -204,6 +208,8 @@ curl -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/menu
 
 **Complementos flexíveis.** Um produto tem grupos com mínimo e máximo de escolhas, o que cobre os casos reais: "ponto da carne" (exatamente 1), "adicionais" (0 a 4), "pizza meio a meio" (1 a 2 sabores). Um produto cujo grupo obrigatório ficou sem opções disponíveis some do cardápio público, porque seria impossível pedi-lo.
 
+**Conta aberta sem duplicidade.** Mesa e comanda viram uma conta (`Tab`) e cada pedido aponta para ela. Um índice único **parcial** no PostgreSQL (`restaurante + tipo + número` só onde `status = 'OPEN'`) garante uma única conta aberta por mesa, mesmo com o garçom e o QR Code lançando ao mesmo tempo: quem perde a corrida pega a conta já criada. Um teste dispara 6 lançamentos simultâneos na mesa livre e confere que só uma conta foi aberta. O fechamento também só é gravado se a conta ainda estiver aberta, então dois cliques em "Fechar" não fecham duas vezes. O cálculo (taxa, desconto limitado ao valor da conta) fica em [`tab.ts`](packages/shared/src/tab.ts), compartilhado entre o PDV (prévia) e a API (valor gravado).
+
 **Histórico preservado.** O pedido guarda uma cópia do que foi pedido (nome, preço, complementos). Editar ou apagar um produto não altera pedidos antigos.
 
 **Garantia de entrega sem duplicidade.** Cada pedido gera um `print_job` no banco, na mesma transação. O servidor reenvia tudo que está `QUEUED`/`SENT` quando o agente conecta; o agente grava o job no SQLite *antes* de imprimir e ignora `jobId` repetido (só reenvia a confirmação). Resultado: entrega *at-least-once* com impressão *exactly-once*.
@@ -300,7 +306,8 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [x] Pedidos em tempo real por WebSocket, com campainha e reconexão automática
 - [x] Etapas do pedido e Kanban de delivery/retirada
 - [x] PDV para a equipe lançar pedidos (balcão, telefone, mesas)
-- [ ] Mesas com comanda aberta e fechamento de conta
+- [x] Mesas e comandas com conta aberta e fechamento de conta
+- [ ] Dividir a conta e transferir itens entre mesas
 - [ ] Painel da cozinha (KDS)
 - [ ] Impressoras USB e Bluetooth
 - [ ] Instalador `.exe` com ícone na bandeja

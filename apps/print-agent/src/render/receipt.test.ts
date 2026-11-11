@@ -81,6 +81,11 @@ describe('buildTicket', () => {
     assert.doesNotMatch(renderPreview(buildTicket(order, order.items, { title: 'Cozinha', columns: 48, showPrices: false })).join('\n'), /PDV/);
   });
 
+  it('comanda aparece no cabeçalho do cupom', () => {
+    const comanda = OrderSchema.parse({ ...order, type: 'comanda', table: '152', customer: undefined });
+    assert.match(renderPreview(buildTicket(comanda, comanda.items, { title: 'Bar', columns: 32, showPrices: false })).join('\n'), /COMANDA 152/);
+  });
+
   it('termina com avanço de papel e corte', () => {
     const receipt = buildTicket(order, order.items, { title: 'x', columns: 32, showPrices: false });
     assert.deepEqual(receipt.lines.slice(-2), [{ kind: 'feed', lines: 2 }, { kind: 'cut' }]);

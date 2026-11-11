@@ -39,3 +39,10 @@ describe('fluxo do pedido', () => {
     assert.equal(advanceLabel('delivery', 'COMPLETED'), null);
   });
 });
+
+describe('comanda', () => {
+  it('segue o mesmo fluxo da mesa e termina como "Servido"', () => {
+    assert.deepEqual(statusFlow('comanda'), statusFlow('mesa'));
+    assert.equal(statusLabel('COMPLETED', 'comanda'), 'Servido');
+  });
+});

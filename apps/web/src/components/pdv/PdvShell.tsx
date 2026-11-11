@@ -6,7 +6,7 @@ import { api } from '@/lib/client-api';
 import { LiveProvider, useLiveEvents, useLiveStatus } from '@/lib/live';
 import type { Me, Role, StoreSettings } from '@/lib/types';
 import { usePolling } from '@/lib/use-polling';
-import { BikeIcon, LogoutIcon, PosIcon } from '../ui/icons';
+import { BikeIcon, CutleryIcon, LogoutIcon, PosIcon, ReceiptIcon } from '../ui/icons';
 
 interface Props {
   me: Me;
@@ -38,8 +38,10 @@ function Frame({ me, slug, restaurantName, role, children }: Props) {
   useLiveEvents((e) => e.type === 'store_updated' && void refresh());
 
   const tabs = [
-    { href: `${base}/balcao`, label: 'Balcão', icon: PosIcon },
+    { href: `${base}/mesas`, also: `${base}/conta/mesa/`, label: 'Mesas', icon: CutleryIcon },
+    { href: `${base}/comandas`, also: `${base}/conta/comanda/`, label: 'Comandas', icon: ReceiptIcon },
     { href: `${base}/delivery`, label: 'Delivery', icon: BikeIcon },
+    { href: `${base}/balcao`, label: 'Balcão', icon: PosIcon },
   ];
 
   async function logout() {
@@ -59,14 +61,14 @@ function Frame({ me, slug, restaurantName, role, children }: Props) {
 
           <nav aria-label="Áreas do PDV" className="order-last flex w-full gap-2 sm:order-none sm:w-auto">
             {tabs.map((t) => {
-              const active = pathname.startsWith(t.href);
+              const active = pathname.startsWith(t.href) || (!!t.also && pathname.startsWith(t.also));
               const Icon = t.icon;
               return (
                 <Link
                   key={t.href}
                   href={t.href}
                   aria-current={active ? 'page' : undefined}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold sm:flex-none ${
+                  className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-semibold sm:flex-none sm:flex-row sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm ${
                     active ? 'bg-gold text-black' : 'text-muted ring-1 ring-line hover:text-fg'
                   }`}
                 >

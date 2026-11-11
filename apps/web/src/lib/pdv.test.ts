@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { MenuProduct } from '@cardapio/shared';
 import { buildLine } from './cart';
-import { buildPdvCheckout, emptyPdvForm, isQuickAdd } from './pdv';
+import type { AdminCategory } from './menu-editor';
+import { buildPdvCheckout, emptyPdvForm, isQuickAdd, toPdvCategories } from './pdv';
 
 const coca: MenuProduct = { id: 'p1', name: 'Coca', description: null, priceCents: 700, imageUrl: null, featured: false, optionGroups: [] };
 const burger: MenuProduct = {
@@ -48,5 +49,34 @@ describe('PDV', () => {
 
   it('pedido vazio não é lançado', () => {
     assert.ok(buildPdvCheckout([], { ...emptyPdvForm('mesa'), table: '1' }).errors.includes('Adicione pelo menos um produto.'));
+  });
+});
+
+describe('PDV: comanda e cardápio da equipe', () => {
+  it('comanda precisa do número e não manda cliente', () => {
+    assert.deepEqual(buildPdvCheckout(lines, emptyPdvForm('comanda')).errors, ['Informe o número da comanda.']);
+    const { checkout } = buildPdvCheckout(lines, { ...emptyPdvForm('comanda'), table: '152' });
+    assert.equal(checkout?.table, '152');
+    assert.equal(checkout?.customer, undefined);
+  });
+
+  it('esgotados aparecem marcados; categorias ocultas e opções esgotadas saem', () => {
+    const admin: AdminCategory[] = [
+      {
+        id: 'c1', name: 'Lanches', position: 0, active: true,
+        products: [
+          { id: 'p1', categoryId: 'c1', name: 'Burger', description: null, priceCents: 2500, sector: 'cozinha', position: 0, active: false, featured: false, imageUrl: null,
+            optionGroups: [{ id: 'g', name: 'Adicionais', minSelect: 0, maxSelect: 2, position: 0, options: [
+              { id: 'o1', name: 'Bacon', priceCents: 400, active: true, position: 0 },
+              { id: 'o2', name: 'Ovo', priceCents: 300, active: false, position: 1 },
+            ] }] },
+        ],
+      },
+      { id: 'c2', name: 'Oculta', position: 1, active: false, products: [] },
+    ];
+    const result = toPdvCategories(admin);
+    assert.deepEqual(result.map((c) => c.name), ['Lanches']);
+    assert.equal(result[0]!.products[0]!.soldOut, true);
+    assert.deepEqual(result[0]!.products[0]!.optionGroups[0]!.options.map((o) => o.name), ['Bacon']);
   });
 });

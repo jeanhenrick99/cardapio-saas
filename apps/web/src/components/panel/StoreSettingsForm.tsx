@@ -13,6 +13,8 @@ interface Form {
   pickupMinutes: string;
   deliveryMinutes: string;
   minOrder: string;
+  tableCount: string;
+  serviceFeePercent: string;
   logoUrl: string;
   coverUrl: string;
 }
@@ -22,6 +24,8 @@ const toForm = (s: StoreSettings): Form => ({
   pickupMinutes: String(s.pickupMinutes),
   deliveryMinutes: String(s.deliveryMinutes),
   minOrder: centsToInput(s.minOrderCents),
+  tableCount: String(s.tableCount),
+  serviceFeePercent: String(s.serviceFeePercent),
   logoUrl: s.logoUrl ?? '',
   coverUrl: s.coverUrl ?? '',
 });
@@ -71,6 +75,8 @@ export function StoreSettingsForm({ slug, role }: { slug: string; role: Role }) 
         pickupMinutes: Number(form.pickupMinutes),
         deliveryMinutes: Number(form.deliveryMinutes),
         minOrderCents,
+        tableCount: Number(form.tableCount),
+        serviceFeePercent: Number(form.serviceFeePercent),
         logoUrl: form.logoUrl.trim() || null,
         coverUrl: form.coverUrl.trim() || null,
       },
@@ -132,6 +138,19 @@ export function StoreSettingsForm({ slug, role }: { slug: string; role: Role }) 
               <input inputMode="decimal" disabled={!canEdit} value={form.minOrder} onChange={set('minOrder')} className={`${inputClass} pl-10`} />
             </div>
             <span className="mt-1 block text-xs text-muted">Use 0,00 para não ter mínimo.</span>
+          </label>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-sm font-semibold">Quantidade de mesas</span>
+            <input type="number" min={0} max={500} required disabled={!canEdit} value={form.tableCount} onChange={set('tableCount')} className={inputClass} />
+            <span className="mt-1 block text-xs text-muted">Mesas que aparecem na grade do PDV (1 a N).</span>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm font-semibold">Taxa de serviço (%)</span>
+            <input type="number" min={0} max={30} required disabled={!canEdit} value={form.serviceFeePercent} onChange={set('serviceFeePercent')} className={inputClass} />
+            <span className="mt-1 block text-xs text-muted">Sugerida no fechamento de mesas e comandas. Use 0 para não cobrar.</span>
           </label>
         </div>
 

@@ -33,6 +33,8 @@ function origin(order: Order): string {
   switch (order.type) {
     case 'mesa':
       return order.table ? `MESA ${order.table}` : 'MESA';
+    case 'comanda':
+      return order.table ? `COMANDA ${order.table}` : 'COMANDA';
     case 'delivery':
       return 'DELIVERY';
     case 'retirada':

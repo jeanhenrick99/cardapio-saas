@@ -83,7 +83,10 @@ export const CheckoutSchema = z
     if (c.type === 'mesa' && !c.table) {
       ctx.addIssue({ code: 'custom', path: ['table'], message: 'Informe o número da mesa' });
     }
-    if (c.type !== 'mesa' && !c.customer) {
+    if (c.type === 'comanda' && !c.table) {
+      ctx.addIssue({ code: 'custom', path: ['table'], message: 'Informe o número da comanda' });
+    }
+    if ((c.type === 'delivery' || c.type === 'retirada') && !c.customer) {
       ctx.addIssue({ code: 'custom', path: ['customer'], message: 'Informe o nome do cliente' });
     }
     if (c.type === 'delivery' && (!c.customer?.address || !c.customer.phone)) {

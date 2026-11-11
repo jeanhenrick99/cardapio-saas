@@ -4,6 +4,7 @@ import type { AgentHub } from '../agents/hub';
 import { buildOrderDraft, checkRestaurantRules } from '../menu/pricing';
 import { loadPricingProducts } from '../menu/queries';
 import { createOrder } from './service';
+import { getOrOpenTab, normalizeTabNumber } from './tabs';
 
 /**
  * Carrinho → preços do banco → pedido + job de impressão → envio ao agente.
@@ -35,8 +36,22 @@ export async function placeOrder(
     });
     checkRestaurantRules(draft, rules);
   }
-  const { order, job } = await createOrder(prisma, restaurantId, draft);
+  // Mesa e comanda: o pedido entra na conta aberta (ou abre uma nova).
+  let tabId: string | undefined;
+  if ((draft.type === 'mesa' || draft.type === 'comanda') && draft.table) {
+    draft.table = normalizeTabNumber(draft.table);
+    tabId = await getOrOpenTab(
+      prisma,
+      restaurantId,
+      draft.type === 'mesa' ? 'MESA' : 'COMANDA',
+      draft.table,
+      opts.staff?.name ?? 'Cliente (QR Code)',
+    );
+  }
+
+  const { order, job } = await createOrder(prisma, restaurantId, draft, { tabId });
   const sent = await hub.dispatch(job.id);
   hub.panel.publish(restaurantId, { type: 'order_created', orderId: order.id, number: order.number });
+  if (tabId) hub.panel.publish(restaurantId, { type: 'tabs_changed' });
   return { order, job, sent };
 }

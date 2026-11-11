@@ -75,6 +75,11 @@ await prisma.membership.upsert({
   create: { userId: staff.id, restaurantId: restaurant.id, role: 'STAFF' },
 });
 
+// Salão de demonstração com 20 mesas (só se ainda não foi configurado).
+if (restaurant.tableCount === 0) {
+  await prisma.restaurant.update({ where: { id: restaurant.id }, data: { tableCount: 20 } });
+}
+
 console.log(`✔ Restaurante "${restaurant.name}" (slug: ${restaurant.slug})`);
 console.log(`✔ Usuário ${DEMO_USER.email} / senha ${DEMO_USER.password} (dono do restaurante)`);
 console.log(`✔ Usuário ${DEMO_STAFF.email} / senha ${DEMO_STAFF.password} (garçom: só PDV)`);

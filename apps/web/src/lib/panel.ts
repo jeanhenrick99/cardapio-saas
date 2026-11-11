@@ -14,8 +14,16 @@ export function timeAgo(iso: string, now: number = Date.now()): string {
 }
 
 export function orderTypeLabel(order: Pick<Order, 'type' | 'table'>): string {
-  if (order.type === 'mesa') return order.table ? `Mesa ${order.table}` : 'Mesa';
-  return order.type === 'delivery' ? 'Delivery' : 'Retirada';
+  switch (order.type) {
+    case 'mesa':
+      return order.table ? `Mesa ${order.table}` : 'Mesa';
+    case 'comanda':
+      return order.table ? `Comanda ${order.table}` : 'Comanda';
+    case 'delivery':
+      return 'Delivery';
+    case 'retirada':
+      return 'Retirada';
+  }
 }
 
 export const PRINT_STATUS: Record<PrintStatus, { label: string; tone: 'ok' | 'wait' | 'busy' | 'error' }> = {

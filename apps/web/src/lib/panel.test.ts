@@ -19,6 +19,7 @@ describe('orderTypeLabel', () => {
     assert.equal(orderTypeLabel({ type: 'mesa', table: '7' }), 'Mesa 7');
     assert.equal(orderTypeLabel({ type: 'delivery' }), 'Delivery');
     assert.equal(orderTypeLabel({ type: 'retirada' }), 'Retirada');
+    assert.equal(orderTypeLabel({ type: 'comanda', table: '152' }), 'Comanda 152');
   });
 });
 

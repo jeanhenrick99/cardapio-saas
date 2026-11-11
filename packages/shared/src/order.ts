@@ -23,7 +23,7 @@ export const OrderItemSchema = z.object({
   notes: z.string().optional(),
 });
 
-export const OrderTypeSchema = z.enum(['mesa', 'delivery', 'retirada']);
+export const OrderTypeSchema = z.enum(['mesa', 'comanda', 'delivery', 'retirada']);
 
 export const OrderSchema = z.object({
   id: z.string(),

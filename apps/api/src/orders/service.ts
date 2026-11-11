@@ -11,6 +11,7 @@ export async function createOrder(
   prisma: PrismaClient,
   restaurantId: string,
   draft: OrderDraft,
+  opts: { tabId?: string } = {},
 ): Promise<{ order: Order; job: PrintJob }> {
   return prisma.$transaction(async (tx) => {
     const { lastOrderNumber } = await tx.restaurant.update({
@@ -36,6 +37,7 @@ export async function createOrder(
         totalCents: orderTotalCents(order),
         data: order as unknown as Prisma.InputJsonValue,
         createdAt,
+        tabId: opts.tabId ?? null,
       },
     });
     const job = await tx.printJob.create({ data: { restaurantId, orderId: order.id } });

@@ -113,6 +113,7 @@ export type PanelEvent =
   | { type: 'order_updated'; orderId: string; printStatus: 'PRINTED' | 'FAILED' }
   | { type: 'order_status'; orderId: string; status: OrderStatus }
   | { type: 'agents_changed' }
+  | { type: 'tabs_changed' }
   | { type: 'store_updated' };
 
 export const PanelCloseCodes = {

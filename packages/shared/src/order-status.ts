@@ -11,6 +11,7 @@ const FLOWS: Record<OrderType, OrderStatus[]> = {
   delivery: ['RECEIVED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'COMPLETED'],
   retirada: ['RECEIVED', 'PREPARING', 'READY', 'COMPLETED'],
   mesa: ['RECEIVED', 'PREPARING', 'READY', 'COMPLETED'],
+  comanda: ['RECEIVED', 'PREPARING', 'READY', 'COMPLETED'],
 };
 
 /** Etapas do pedido em ordem (sem o cancelado). */
@@ -55,7 +56,7 @@ const LABELS: Record<OrderStatus, string> = {
 
 /** Nome da etapa; "Concluído" muda conforme o tipo (Entregue, Retirado, Servido). */
 export function statusLabel(status: OrderStatus, type?: OrderType): string {
-  if (status === 'COMPLETED' && type) return { delivery: 'Entregue', retirada: 'Retirado', mesa: 'Servido' }[type];
+  if (status === 'COMPLETED' && type) return { delivery: 'Entregue', retirada: 'Retirado', mesa: 'Servido', comanda: 'Servido' }[type];
   if (status === 'READY' && type === 'retirada') return 'Pronto para retirar';
   return LABELS[status];
 }

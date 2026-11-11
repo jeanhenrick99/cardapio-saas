@@ -56,6 +56,7 @@ export async function publicRoutes(app: FastifyInstance, { hub }: { hub: AgentHu
       if (!restaurant) return reply.code(404).send({ error: 'Restaurante não encontrado' });
 
       const checkout = CheckoutSchema.parse(request.body);
+      if (checkout.type === 'comanda') return reply.code(400).send({ error: 'Comandas são abertas pela equipe, no PDV.' });
       const { order } = await placeOrder(prisma, hub, restaurant.id, checkout);
       // Para o cliente, só o necessário: nada de dados internos como o job de impressão.
       return reply.code(201).send({ number: order.number, items: order.items, totalCents: orderTotalCents(order) });

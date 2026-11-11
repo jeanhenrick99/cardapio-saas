@@ -24,6 +24,10 @@ model Restaurant {
   deliveryMinutes Int      @default(45)
   /// Valor mínimo do pedido de delivery (em centavos). 0 = sem mínimo.
   minOrderCents   Int      @default(0)
+  /// Quantidade de mesas do salão (o PDV mostra as mesas 1 a N).
+  tableCount        Int @default(0)
+  /// Taxa de serviço sugerida no fechamento da conta (%). 0 = sem taxa.
+  serviceFeePercent Int @default(10)
 
   orders       Order[]
   printJobs    PrintJob[]
@@ -33,6 +37,7 @@ model Restaurant {
   categories   Category[]
   products     Product[]
   images       Image[]
+  tabs         Tab[]
 }
 
 model User {
@@ -124,10 +129,15 @@ model Order {
   status          OrderStatus @default(RECEIVED)
   statusChangedAt DateTime    @default(now())
 
+  /// Conta (mesa ou comanda) à qual o pedido pertence. Delivery e retirada não têm conta.
+  tabId           String?
+
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tab        Tab?       @relation(fields: [tabId], references: [id])
   printJobs  PrintJob[]
 
   @@unique([restaurantId, number])
+  @@index([tabId])
   @@index([restaurantId, status])
 }
 
@@ -252,4 +262,41 @@ model Image {
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@index([restaurantId])
+}
+
+enum TabKind {
+  MESA
+  COMANDA
+}
+
+enum TabStatus {
+  OPEN
+  CLOSED
+}
+
+/// Conta aberta de uma mesa ou comanda: soma os pedidos até o fechamento.
+/// Regra garantida pelo banco (índice parcial "Tab_one_open_per_number", criado na
+/// migration _tabs): no máximo UMA conta aberta por (restaurante, tipo, número).
+/// ATENÇÃO: o Prisma não conhece esse índice; ao gerar migrations novas, confira se
+/// ele não aparece num DROP INDEX e remova essa linha se aparecer.
+model Tab {
+  id           String    @id @default(uuid())
+  restaurantId String
+  kind         TabKind
+  number       String
+  status       TabStatus @default(OPEN)
+  openedAt     DateTime  @default(now())
+  openedBy     String?
+  closedAt     DateTime?
+  closedBy     String?
+  paymentMethod   String?
+  subtotalCents   Int?
+  serviceFeeCents Int?
+  discountCents   Int?
+  totalCents      Int?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  orders     Order[]
+
+  @@index([restaurantId, status])
 }
