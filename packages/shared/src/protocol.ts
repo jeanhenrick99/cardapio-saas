@@ -114,6 +114,7 @@ export type PanelEvent =
   | { type: 'order_status'; orderId: string; status: OrderStatus }
   | { type: 'agents_changed' }
   | { type: 'tabs_changed' }
+  | { type: 'cash_changed' }
   | { type: 'store_updated' };
 
 export const PanelCloseCodes = {

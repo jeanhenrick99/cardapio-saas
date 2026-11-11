@@ -3,6 +3,7 @@ import type { Checkout } from '@cardapio/shared';
 import type { AgentHub } from '../agents/hub';
 import { buildOrderDraft, checkRestaurantRules } from '../menu/pricing';
 import { loadPricingProducts } from '../menu/queries';
+import { openCashRegisterId } from './cash';
 import { createOrder } from './service';
 import { getOrOpenTab, normalizeTabNumber } from './tabs';
 
@@ -49,7 +50,8 @@ export async function placeOrder(
     );
   }
 
-  const { order, job } = await createOrder(prisma, restaurantId, draft, { tabId });
+  const cashRegisterId = tabId ? null : await openCashRegisterId(prisma, restaurantId);
+  const { order, job } = await createOrder(prisma, restaurantId, draft, { tabId, cashRegisterId });
   const sent = await hub.dispatch(job.id);
   hub.panel.publish(restaurantId, { type: 'order_created', orderId: order.id, number: order.number });
   if (tabId) hub.panel.publish(restaurantId, { type: 'tabs_changed' });

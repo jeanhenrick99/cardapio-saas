@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { api } from '@/lib/client-api';
 import { LiveProvider, useLiveEvents, useLiveStatus } from '@/lib/live';
-import type { Me, Role, StoreSettings } from '@/lib/types';
+import type { CashResponse, Me, Role, StoreSettings } from '@/lib/types';
 import { usePolling } from '@/lib/use-polling';
-import { BikeIcon, CutleryIcon, LogoutIcon } from '../ui/icons';
+import { BikeIcon, CutleryIcon, LogoutIcon, WalletIcon } from '../ui/icons';
 
 interface Props {
   me: Me;
@@ -36,6 +36,9 @@ function Frame({ me, slug, restaurantName, role, children }: Props) {
   const live = useLiveStatus();
   const { data: settings, refresh } = usePolling<StoreSettings>(`/restaurants/${slug}/settings`, 60_000);
   useLiveEvents((e) => e.type === 'store_updated' && void refresh());
+  const { data: cash, refresh: refreshCash } = usePolling<CashResponse>(`/restaurants/${slug}/cash`, 60_000);
+  useLiveEvents((e) => e.type === 'cash_changed' && void refreshCash());
+  const cashOpen = cash ? cash.current !== null : null;
 
   const tabs = [
     { href: `${base}/salao`, also: `${base}/conta/`, label: 'Mesas e comandas', icon: CutleryIcon },
@@ -87,6 +90,18 @@ function Frame({ me, slug, restaurantName, role, children }: Props) {
                 <span className={`h-2 w-2 rounded-full ${settings.acceptingOrders ? 'bg-emerald-400' : 'bg-red-400'}`} />
                 {settings.acceptingOrders ? 'Loja aberta' : 'Loja fechada'}
               </span>
+            )}
+            {cashOpen !== null && (
+              <Link
+                href={`${base}/caixa`}
+                aria-current={pathname.startsWith(`${base}/caixa`) ? 'page' : undefined}
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 ring-1 ${
+                  cashOpen ? 'text-fg ring-line hover:ring-gold-deep' : 'bg-wine-deep text-red-200 ring-wine-hover'
+                } ${pathname.startsWith(`${base}/caixa`) ? 'ring-gold' : ''}`}
+              >
+                <WalletIcon className="h-4 w-4" />
+                {cashOpen ? 'Caixa aberto' : 'Caixa fechado'}
+              </Link>
             )}
             {role === 'OWNER' && (
               <Link href={`/painel/${slug}`} className="rounded-lg px-3 py-1.5 text-gold ring-1 ring-gold-deep hover:ring-gold">

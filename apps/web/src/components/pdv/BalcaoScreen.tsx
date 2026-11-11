@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { formatBRL, isSearchablePhone } from '@cardapio/shared';
+import { formatBRL, isSearchablePhone, PAYMENT_METHODS } from '@cardapio/shared';
 import { addLine, cartTotalCents, type CartLine } from '@/lib/cart';
 import { api, ApiError } from '@/lib/client-api';
 import { buildPdvCheckout, emptyPdvForm, type PdvForm } from '@/lib/pdv';
@@ -10,7 +10,6 @@ import { inputClass } from '../panel/styles';
 import { CartLines } from './CartLines';
 import { Catalog, type CatalogHandle } from './Catalog';
 
-const PAYMENT_METHODS = ['Pix', 'Cartão de crédito', 'Cartão de débito', 'Dinheiro'];
 
 interface FoundCustomer {
   name: string;

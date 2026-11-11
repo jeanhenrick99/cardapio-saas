@@ -1,4 +1,5 @@
 import type { Order, OrderStatus } from '@cardapio/shared';
+import type { CashSummary, SalesReport } from '@cardapio/shared';
 
 export type Role = 'OWNER' | 'STAFF';
 
@@ -87,5 +88,43 @@ export interface TabDetail extends TabSummary {
     staffName?: string;
     notes?: string;
     items: Order['items'];
+  }[];
+}
+
+export interface CashRegisterView {
+  id: string;
+  status: 'OPEN' | 'CLOSED';
+  openedAt: string;
+  openedBy: string;
+  openingCents: number;
+  closedAt: string | null;
+  closedBy: string | null;
+  countedCents: number | null;
+  expectedCashCents: number | null;
+  differenceCents: number | null;
+  notes: string | null;
+}
+
+export interface CashRegisterDetail extends CashRegisterView {
+  summary: CashSummary;
+  movements: { id: string; kind: 'SANGRIA' | 'SUPRIMENTO'; amountCents: number; reason: string; createdAt: string; createdBy: string }[];
+}
+
+export interface CashResponse {
+  current: CashRegisterDetail | null;
+  recent: CashRegisterView[];
+}
+
+export interface SalesReportResponse extends SalesReport {
+  registers: {
+    id: string;
+    openedAt: string;
+    closedAt: string;
+    openedBy: string;
+    closedBy: string | null;
+    salesCents: number;
+    expectedCashCents: number | null;
+    countedCents: number | null;
+    differenceCents: number | null;
   }[];
 }

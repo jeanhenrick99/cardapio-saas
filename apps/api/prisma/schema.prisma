@@ -16,28 +16,29 @@ model Restaurant {
   createdAt       DateTime @default(now())
 
   // Vitrine do cardápio
-  logoUrl         String?
-  coverUrl        String?
+  logoUrl           String?
+  coverUrl          String?
   /// Liga/desliga o recebimento de pedidos ("Aberto agora" / "Fechado").
-  acceptingOrders Boolean  @default(true)
-  pickupMinutes   Int      @default(30)
-  deliveryMinutes Int      @default(45)
+  acceptingOrders   Boolean @default(true)
+  pickupMinutes     Int     @default(30)
+  deliveryMinutes   Int     @default(45)
   /// Valor mínimo do pedido de delivery (em centavos). 0 = sem mínimo.
-  minOrderCents   Int      @default(0)
+  minOrderCents     Int     @default(0)
   /// Quantidade de mesas do salão (o PDV mostra as mesas 1 a N).
-  tableCount        Int @default(0)
+  tableCount        Int     @default(0)
   /// Taxa de serviço sugerida no fechamento da conta (%). 0 = sem taxa.
-  serviceFeePercent Int @default(10)
+  serviceFeePercent Int     @default(10)
 
-  orders       Order[]
-  printJobs    PrintJob[]
-  agents       Agent[]
-  pairingCodes PairingCode[]
-  memberships  Membership[]
-  categories   Category[]
-  products     Product[]
-  images       Image[]
-  tabs         Tab[]
+  orders        Order[]
+  printJobs     PrintJob[]
+  agents        Agent[]
+  pairingCodes  PairingCode[]
+  memberships   Membership[]
+  categories    Category[]
+  products      Product[]
+  images        Image[]
+  tabs          Tab[]
+  cashRegisters CashRegister[]
 }
 
 model User {
@@ -117,28 +118,35 @@ model PairingCode {
 }
 
 model Order {
-  id           String   @id
-  restaurantId String
-  number       Int
-  type         String
-  totalCents   Int
+  id              String      @id
+  restaurantId    String
+  number          Int
+  type            String
+  totalCents      Int
   /// Snapshot completo do pedido (itens, adicionais, cliente) no formato do pacote shared.
-  data         Json
-  createdAt    DateTime @default(now())
+  data            Json
+  createdAt       DateTime    @default(now())
   /// Etapa do pedido (Kanban). As regras de mudança ficam em packages/shared/src/order-status.ts.
   status          OrderStatus @default(RECEIVED)
   statusChangedAt DateTime    @default(now())
 
   /// Conta (mesa ou comanda) à qual o pedido pertence. Delivery e retirada não têm conta.
-  tabId           String?
+  tabId          String?
+  /// Cópia de data.paymentMethod em coluna, para somar nos relatórios sem ler o JSON.
+  paymentMethod  String?
+  /// Caixa aberto quando o pedido avulso (sem conta) foi feito.
+  cashRegisterId String?
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  tab        Tab?       @relation(fields: [tabId], references: [id])
-  printJobs  PrintJob[]
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tab          Tab?          @relation(fields: [tabId], references: [id])
+  cashRegister CashRegister? @relation(fields: [cashRegisterId], references: [id])
+  printJobs    PrintJob[]
 
   @@unique([restaurantId, number])
   @@index([tabId])
   @@index([restaurantId, status])
+  @@index([restaurantId, createdAt])
+  @@index([cashRegisterId])
 }
 
 enum OrderStatus {
@@ -280,23 +288,78 @@ enum TabStatus {
 /// ATENÇÃO: o Prisma não conhece esse índice; ao gerar migrations novas, confira se
 /// ele não aparece num DROP INDEX e remova essa linha se aparecer.
 model Tab {
-  id           String    @id @default(uuid())
-  restaurantId String
-  kind         TabKind
-  number       String
-  status       TabStatus @default(OPEN)
-  openedAt     DateTime  @default(now())
-  openedBy     String?
-  closedAt     DateTime?
-  closedBy     String?
+  id              String    @id @default(uuid())
+  restaurantId    String
+  kind            TabKind
+  number          String
+  status          TabStatus @default(OPEN)
+  openedAt        DateTime  @default(now())
+  openedBy        String?
+  closedAt        DateTime?
+  closedBy        String?
   paymentMethod   String?
   subtotalCents   Int?
   serviceFeeCents Int?
   discountCents   Int?
   totalCents      Int?
+  /// Caixa aberto quando a conta foi fechada (paga).
+  cashRegisterId  String?
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  orders     Order[]
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  cashRegister CashRegister? @relation(fields: [cashRegisterId], references: [id])
+  orders       Order[]
 
   @@index([restaurantId, status])
+  @@index([restaurantId, closedAt])
+  @@index([cashRegisterId])
+}
+
+enum CashRegisterStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashMovementKind {
+  SANGRIA
+  SUPRIMENTO
+}
+
+/// Caixa do PDV: aberto com troco, recebe vendas, sangrias e suprimentos, e é conferido no fechamento.
+/// Só um caixa aberto por restaurante: índice único PARCIAL criado na migração (o Prisma não o
+/// representa; ao gerar migrações novas, confira se nenhuma apaga "CashRegister_one_open").
+model CashRegister {
+  id                String             @id @default(uuid())
+  restaurantId      String
+  status            CashRegisterStatus @default(OPEN)
+  openedAt          DateTime           @default(now())
+  openedBy          String
+  openingCents      Int
+  closedAt          DateTime?
+  closedBy          String?
+  countedCents      Int?
+  expectedCashCents Int?
+  /// Resumo gravado no fechamento (CashSummary do pacote shared): não muda se um pedido for cancelado depois.
+  summary           Json?
+  notes             String?
+
+  restaurant Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  movements  CashMovement[]
+  orders     Order[]
+  tabs       Tab[]
+
+  @@index([restaurantId, openedAt])
+}
+
+model CashMovement {
+  id          String           @id @default(uuid())
+  registerId  String
+  kind        CashMovementKind
+  amountCents Int
+  reason      String
+  createdAt   DateTime         @default(now())
+  createdBy   String
+
+  register CashRegister @relation(fields: [registerId], references: [id], onDelete: Cascade)
+
+  @@index([registerId])
 }

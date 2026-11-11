@@ -4,7 +4,7 @@
 
 **Bistroo** é uma plataforma de cardápio digital e pedidos para restaurantes, com **impressão automática na cozinha** via um agente local que fala ESC/POS direto com as impressoras térmicas.
 
-> 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular** (mesa, retirada ou delivery), **retaguarda** (cardápio, loja, impressoras, QR Codes) e **PDV** separados (mesas e comandas com conta aberta e fechamento, lançamento de pedidos e Kanban de delivery em tempo real), API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
+> 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular** (mesa, retirada ou delivery), **retaguarda** (cardápio, loja, impressoras, QR Codes) e **PDV** separados (mesas e comandas com conta aberta e fechamento, lançamento de pedidos, Kanban de delivery em tempo real e **caixa** com sangria, suprimento e conferência), **relatórios de vendas**, API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
 
 ## Demo ao vivo
 
@@ -96,6 +96,7 @@ O sistema tem duas áreas, como nos sistemas de restaurante:
 **Retaguarda** (`/painel/<restaurante>`, só o dono): configurar e acompanhar o negócio. Menu lateral com busca (**Ctrl+K**) e seções recolhíveis (no celular vira gaveta), barra superior com o status da loja e o botão **Abrir PDV**.
 
 - **Início**: pedidos, faturamento e ticket médio do dia, mais atalhos que avisam o que precisa de atenção (loja fechada, impressora offline com pedidos esperando)
+- **Relatórios**: faturamento, ticket médio, pedidos e cancelados do período (hoje, ontem, 7 e 30 dias, este mês ou datas livres), gráfico de faturamento por dia (também em tabela), vendas por forma de pagamento e por tipo, produtos mais vendidos e os fechamentos de caixa com sobra ou falta
 - **Histórico de pedidos**: os pedidos chegam **na hora** (WebSocket), com destaque para os novos, campainha opcional, contador no título da aba e o status da impressão de cada um
 - **Cardápio**: categorias (criar, renomear, reordenar, ocultar), produtos com preço, setor de impressão, foto, destaque e complementos (grupos com mínimo e máximo), e um botão rápido de esgotado/disponível
 - **Loja**: abrir/fechar para pedidos, tempos de retirada e entrega, pedido mínimo do delivery, quantidade de mesas, taxa de serviço, logo e capa
@@ -109,6 +110,7 @@ O sistema tem duas áreas, como nos sistemas de restaurante:
 - **Fechar conta**: resumo do consumo (pedidos cancelados não entram), taxa de serviço opcional (10% por padrão, configurável), desconto e forma de pagamento. A mesa fica livre e as contas fechadas nas últimas 12 h aparecem abaixo da grade
 - **Disponibilidade**: no catálogo do PDV, a equipe marca um produto como **esgotado** com um toque, e ele some do cardápio do cliente na hora
 - **Novo pedido** (botão no quadro de Delivery e balcão): pedidos de balcão (retirada) e telefone (delivery). Busca com `/` e Enter, produto sem complementos entra com um toque, e o telefone de um cliente que já pediu preenche nome e endereço. O pedido sai marcado como "PDV · lançado por <funcionário>" no painel e no cupom. "Loja fechada" e pedido mínimo valem só para o cardápio online
+- **Caixa** (no cabeçalho do PDV, sempre visível como aberto ou fechado): abrir com o troco inicial, registrar **sangria** e **suprimento** com motivo, acompanhar as vendas por forma de pagamento e **fechar** informando o dinheiro contado. O sistema mostra o esperado na gaveta (troco + vendas em dinheiro + suprimentos − sangrias) e a diferença (sobra ou falta)
 - **Delivery e balcão**: quadro **Kanban** (Recebido → Em preparo → Pronto → Saiu para entrega → Concluído). No computador, arraste os cards; no celular, use os botões de cada pedido. Mostra há quanto tempo o pedido espera (alerta aos 30 e aos 45 min) e atualiza ao vivo para toda a equipe
 
 O funcionário (`STAFF`) acessa só o PDV. Cardápio, loja, impressoras e faturamento ficam na retaguarda, com o dono.
@@ -210,6 +212,10 @@ curl -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/menu
 
 **Conta aberta sem duplicidade.** Mesa e comanda viram uma conta (`Tab`) e cada pedido aponta para ela. Um índice único **parcial** no PostgreSQL (`restaurante + tipo + número` só onde `status = 'OPEN'`) garante uma única conta aberta por mesa, mesmo com o garçom e o QR Code lançando ao mesmo tempo: quem perde a corrida pega a conta já criada. Um teste dispara 6 lançamentos simultâneos na mesa livre e confere que só uma conta foi aberta. O fechamento também só é gravado se a conta ainda estiver aberta, então dois cliques em "Fechar" não fecham duas vezes. O cálculo (taxa, desconto limitado ao valor da conta) fica em [`tab.ts`](packages/shared/src/tab.ts), compartilhado entre o PDV (prévia) e a API (valor gravado).
 
+**Caixa amarrado às vendas, não ao relógio.** Cada pedido de balcão/delivery e cada conta de mesa fechada guarda o caixa que estava aberto naquele momento, então o fechamento soma exatamente o que passou por ele, mesmo num expediente que vira a meia-noite. Só existe um caixa aberto por restaurante (índice único parcial, como nas contas), e o resumo é **gravado no fechamento**: cancelar um pedido depois não altera um caixa já conferido. A conta da gaveta fica em [`cash.ts`](packages/shared/src/cash.ts), testada sem banco.
+
+**Relatórios no horário de Brasília.** "Hoje" vai de 00:00 a 23:59 em Brasília, não em UTC: uma conta fechada às 22h conta para o dia certo. O relatório é uma função pura ([`report.ts`](packages/shared/src/report.ts)) que recebe os pedidos e as contas do período e devolve os totais; a API só busca os dados. Faturamento = o que foi **recebido** (pedidos avulsos + contas fechadas, já com taxa de serviço e desconto); os pedidos de mesa entram no consumo e nos produtos, mas não são contados duas vezes.
+
 **Histórico preservado.** O pedido guarda uma cópia do que foi pedido (nome, preço, complementos). Editar ou apagar um produto não altera pedidos antigos.
 
 **Garantia de entrega sem duplicidade.** Cada pedido gera um `print_job` no banco, na mesma transação. O servidor reenvia tudo que está `QUEUED`/`SENT` quando o agente conecta; o agente grava o job no SQLite *antes* de imprimir e ignora `jobId` repetido (só reenvia a confirmação). Resultado: entrega *at-least-once* com impressão *exactly-once*.
@@ -307,6 +313,7 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [x] Etapas do pedido e Kanban de delivery/retirada
 - [x] PDV para a equipe lançar pedidos (balcão, telefone, mesas)
 - [x] Mesas e comandas com conta aberta e fechamento de conta
+- [x] Caixa (abertura, sangria, suprimento, fechamento com conferência) e relatórios de vendas
 - [ ] Dividir a conta e transferir itens entre mesas
 - [ ] Painel da cozinha (KDS)
 - [ ] Impressoras USB e Bluetooth

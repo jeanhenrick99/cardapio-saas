@@ -5,3 +5,6 @@ export * from './protocol';
 export * from './order-status';
 export * from './phone';
 export * from './tab';
+export * from './payment';
+export * from './cash';
+export * from './report';

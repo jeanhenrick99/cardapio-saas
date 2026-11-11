@@ -11,7 +11,7 @@ export async function createOrder(
   prisma: PrismaClient,
   restaurantId: string,
   draft: OrderDraft,
-  opts: { tabId?: string } = {},
+  opts: { tabId?: string; cashRegisterId?: string | null } = {},
 ): Promise<{ order: Order; job: PrintJob }> {
   return prisma.$transaction(async (tx) => {
     const { lastOrderNumber } = await tx.restaurant.update({
@@ -38,6 +38,9 @@ export async function createOrder(
         data: order as unknown as Prisma.InputJsonValue,
         createdAt,
         tabId: opts.tabId ?? null,
+        paymentMethod: order.paymentMethod ?? null,
+        // Pedido avulso entra no caixa aberto; o de mesa/comanda entra quando a conta for fechada.
+        cashRegisterId: opts.tabId ? null : (opts.cashRegisterId ?? null),
       },
     });
     const job = await tx.printJob.create({ data: { restaurantId, orderId: order.id } });

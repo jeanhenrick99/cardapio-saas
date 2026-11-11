@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient, type TabKind } from '@prisma/client';
+import { openCashRegisterId } from './cash';
 import { tabTotals, type Order } from '@cardapio/shared';
 
 /** "07" e "7" são a mesma mesa; comanda "A12" fica como está (em maiúsculas). */
@@ -84,6 +85,7 @@ export async function closeTab(
     applyServiceFee: input.applyServiceFee,
     discountCents: input.discountCents,
   });
+  const cashRegisterId = await openCashRegisterId(prisma, restaurantId);
   // Só fecha se ainda estiver aberta (dois caixas fechando ao mesmo tempo: um vence).
   const { count } = await prisma.tab.updateMany({
     where: { id: tabId, restaurantId, status: 'OPEN' },
@@ -92,6 +94,7 @@ export async function closeTab(
       closedAt: new Date(),
       closedBy: input.closedBy,
       paymentMethod: input.paymentMethod,
+      cashRegisterId,
       ...totals,
     },
   });

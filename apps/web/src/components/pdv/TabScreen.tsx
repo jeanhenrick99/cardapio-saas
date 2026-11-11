@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { formatBRL, itemTotalCents, statusLabel, tabTotals } from '@cardapio/shared';
+import { formatBRL, itemTotalCents, PAYMENT_METHODS, statusLabel, tabTotals } from '@cardapio/shared';
 import { addLine, cartTotalCents, toCheckoutItems, type CartLine } from '@/lib/cart';
 import { api, ApiError } from '@/lib/client-api';
 import { useLiveEvents } from '@/lib/live';
@@ -14,7 +14,6 @@ import { Sheet } from '../ui/Sheet';
 import { CartLines } from './CartLines';
 import { Catalog, type CatalogHandle } from './Catalog';
 
-const PAYMENT_METHODS = ['Pix', 'Cartão de crédito', 'Cartão de débito', 'Dinheiro'];
 
 /**
  * Conta de uma mesa ou comanda: consumo (pedidos já lançados), novo lançamento e fechamento.
@@ -200,7 +199,7 @@ function CloseTabSheet({
   onClose: () => void;
   onClosed: () => void;
 }) {
-  const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS[0]!);
+  const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS[0]);
   const [applyServiceFee, setApplyServiceFee] = useState(tab.serviceFeePercent > 0);
   const [discount, setDiscount] = useState(centsToInput(0));
   const [error, setError] = useState<string | null>(null);
