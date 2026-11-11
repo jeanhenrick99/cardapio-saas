@@ -52,6 +52,9 @@ export function buildTicket(order: Order, items: OrderItem[], opts: TicketOption
   big(`PEDIDO #${String(order.number).padStart(4, '0')}`);
   text(origin(order), { align: 'center', bold: true });
   text(formatDateTime(order.createdAt), { align: 'center' });
+  if (order.origin === 'pdv') {
+    wrap(order.staffName ? `PDV - lançado por ${order.staffName}` : 'Lançado no PDV', columns).forEach((l) => text(l, { align: 'center' }));
+  }
 
   if (order.customer) {
     lines.push({ kind: 'divider' });

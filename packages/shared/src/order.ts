@@ -43,6 +43,10 @@ export const OrderSchema = z.object({
   deliveryFeeCents: cents.default(0),
   discountCents: cents.default(0),
   paymentMethod: z.string().optional(),
+  /** De onde veio o pedido: cardápio do cliente (QR/link) ou PDV da equipe. */
+  origin: z.enum(['cardapio', 'pdv']).default('cardapio'),
+  /** Quem lançou, quando veio do PDV. */
+  staffName: z.string().optional(),
 });
 
 /** Pedido como chega do cliente: id, número e data são definidos pelo servidor. */

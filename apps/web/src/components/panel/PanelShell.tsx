@@ -16,6 +16,7 @@ import {
   HomeIcon,
   LogoutIcon,
   MenuIcon,
+  PosIcon,
   PrinterIcon,
   QrIcon,
   ReceiptIcon,
@@ -70,6 +71,7 @@ function ShellFrame({ me, slug, restaurantName, role, children }: Props) {
       {
         title: 'Vendas',
         items: [
+          { href: `${base}/pdv`, label: 'PDV', icon: PosIcon },
           { href: `${base}/pedidos`, label: 'Pedidos', icon: ReceiptIcon },
           { href: `${base}/delivery`, label: 'Delivery e retirada', icon: BikeIcon },
         ],

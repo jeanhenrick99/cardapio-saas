@@ -88,6 +88,7 @@ export function buildOrderDraft(checkout: Checkout, products: Map<string, Pricin
     items,
     deliveryFeeCents: 0,
     discountCents: 0,
+    origin: 'cardapio',
   };
 }
 

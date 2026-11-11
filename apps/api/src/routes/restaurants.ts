@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { canTransition, CheckoutSchema, ORDER_STATUSES, statusLabel, type Order, type OrderType } from '@cardapio/shared';
+import { canTransition, CheckoutSchema, isSearchablePhone, ORDER_STATUSES, samePhone, statusLabel, type Order, type OrderType } from '@cardapio/shared';
 import type { AgentHub } from '../agents/hub';
 import { generatePairingCode, hashToken } from '../auth/tokens';
 import { prisma } from '../db';
@@ -41,14 +41,14 @@ export async function restaurantRoutes(app: FastifyInstance, { hub }: { hub: Age
     return reply.code(201).send(restaurant);
   });
 
-  /** Pedido lançado pela equipe (balcão, telefone). Preços vêm do cardápio, como no pedido público. */
+  /** Pedido lançado pela equipe no PDV (balcão, telefone, mesa). Preços vêm do cardápio, como no pedido público. */
   app.post('/restaurants/:slug/orders', async (request, reply) => {
     const { slug } = SlugParams.parse(request.params);
     const restaurant = await loadRestaurantFor(request, reply, slug);
     if (!restaurant) return;
 
     const checkout = CheckoutSchema.parse(request.body);
-    const { order, job, sent } = await placeOrder(prisma, hub, restaurant.id, checkout);
+    const { order, job, sent } = await placeOrder(prisma, hub, restaurant.id, checkout, { staff: { name: request.user!.name } });
     request.log.info({ orderNumber: order.number, jobId: job.id, sent }, sent ? 'Pedido enviado ao agente' : 'Pedido na fila: agente offline');
     return reply.code(201).send({ order, printJob: { id: job.id, status: sent ? 'SENT' : 'QUEUED' } });
   });
@@ -163,6 +163,39 @@ export async function restaurantRoutes(app: FastifyInstance, { hub }: { hub: Age
 
     hub.panel.publish(restaurant.id, { type: 'order_status', orderId: id, status });
     return { id, status };
+  });
+
+  /**
+   * Busca um cliente que já pediu, pelo telefone (PDV: preenche nome e endereço).
+   * Olha os pedidos mais recentes do próprio restaurante, nunca de outro.
+   */
+  app.get('/restaurants/:slug/customers', async (request, reply) => {
+    const { slug } = SlugParams.parse(request.params);
+    const restaurant = await loadRestaurantFor(request, reply, slug);
+    if (!restaurant) return;
+    const { phone } = z.object({ phone: z.string().max(30) }).parse(request.query);
+    if (!isSearchablePhone(phone)) return reply.code(400).send({ error: 'Informe o telefone com DDD' });
+
+    const recent = await prisma.order.findMany({
+      where: { restaurantId: restaurant.id, type: { in: ['delivery', 'retirada'] } },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+      select: { data: true, createdAt: true },
+    });
+    const matches = recent
+      .map((o) => ({ customer: (o.data as unknown as Order).customer, createdAt: o.createdAt }))
+      .filter((o) => o.customer?.phone && samePhone(o.customer.phone, phone));
+    const latest = matches[0];
+    if (!latest?.customer) return reply.code(404).send({ error: 'Cliente ainda não fez pedidos' });
+    // Endereço: o mais recente que tiver endereço (o último pedido pode ter sido retirada).
+    const address = matches.find((m) => m.customer?.address)?.customer?.address ?? null;
+    return {
+      name: latest.customer.name,
+      phone: latest.customer.phone,
+      address,
+      orders: matches.length,
+      lastOrderAt: latest.createdAt,
+    };
   });
 
   /** Abre/fecha o restaurante e ajusta tempos, pedido mínimo e imagens. Só o dono. */

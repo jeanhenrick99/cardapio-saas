@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { MenuCategory, MenuProduct } from '@cardapio/shared';
-import { filterMenu, normalize } from './search';
+import { filterMenu, normalize, rankByName } from './search';
 
 const product = (id: string, name: string, description: string | null = null): MenuProduct => ({
   id,
@@ -38,5 +38,20 @@ describe('busca no cardápio', () => {
 
   it('busca vazia devolve o cardápio inteiro', () => {
     assert.equal(filterMenu(menu, '   '), menu);
+  });
+});
+
+describe('rankByName (PDV)', () => {
+  it('quem combina pelo nome vem antes de quem combina só pela descrição', () => {
+    const found = filterMenu(menu, 'pao').flatMap((c) => c.products);
+    const extra = product('9', 'Pão de queijo');
+    const ranked = rankByName([...found, extra], 'pao');
+    assert.equal(ranked[0]?.name, 'Pão de queijo');
+    assert.equal(ranked[1]?.name, 'X-Burguer');
+  });
+
+  it('busca vazia mantém a ordem', () => {
+    const list = [product('1', 'B'), product('2', 'A')];
+    assert.deepEqual(rankByName(list, ' '), list);
   });
 });

@@ -185,6 +185,7 @@ function OrderCard({
       </div>
       <div className={`text-xs ${done ? 'text-muted' : WAIT_TONE[wait.level]}`}>
         {done ? statusLabel('COMPLETED', order.type) : `${wait.minutes} min desde o pedido`}
+        {order.origin === 'pdv' && <span className="text-muted"> · PDV</span>}
       </div>
 
       {order.customer && (

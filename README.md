@@ -91,6 +91,7 @@ O painel tem menu lateral (com busca por **Ctrl+K** e seções recolhíveis; no 
 - **Início**: pedidos, faturamento e ticket médio do dia, mais atalhos que avisam o que precisa de atenção (loja fechada, impressora offline com pedidos esperando)
 
 - **Pedidos**: os pedidos chegam **na hora** (WebSocket), com destaque para os novos, campainha opcional, contador no título da aba e o status da impressão de cada um
+- **PDV**: a equipe lança pedidos de mesa, balcão (retirada) e telefone (delivery). Busca com `/` e Enter, produto sem complementos entra com um toque, e o telefone de um cliente que já pediu preenche nome e endereço. O pedido sai marcado como "PDV · lançado por <funcionário>" no painel e no cupom. "Loja fechada" e pedido mínimo valem só para o cardápio online
 - **Delivery e retirada**: quadro **Kanban** (Recebido → Em preparo → Pronto → Saiu para entrega → Concluído). No computador, arraste os cards; no celular, use os botões de cada pedido. Mostra há quanto tempo o pedido espera (alerta aos 30 e aos 45 min) e atualiza ao vivo para toda a equipe
 - **Cardápio**: categorias (criar, renomear, reordenar, ocultar), produtos com preço, setor de impressão, foto, destaque e complementos (grupos com mínimo e máximo), e um botão rápido de esgotado/disponível
 - **Loja**: abrir/fechar para pedidos, tempos de retirada e entrega, pedido mínimo do delivery, logo e capa
@@ -289,7 +290,7 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [x] Editor do cardápio no painel
 - [x] Pedidos em tempo real por WebSocket, com campainha e reconexão automática
 - [x] Etapas do pedido e Kanban de delivery/retirada
-- [ ] PDV para a equipe lançar pedidos (balcão, telefone, mesas)
+- [x] PDV para a equipe lançar pedidos (balcão, telefone, mesas)
 - [ ] Mesas com comanda aberta e fechamento de conta
 - [ ] Painel da cozinha (KDS)
 - [ ] Impressoras USB e Bluetooth

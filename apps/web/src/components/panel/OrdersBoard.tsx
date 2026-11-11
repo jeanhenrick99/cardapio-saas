@@ -143,9 +143,16 @@ export function OrdersBoard({ slug }: { slug: string }) {
                     </span>
                   </div>
                 </div>
-                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold tracking-wide uppercase ring-1 ring-line">
-                  {orderTypeLabel(order)}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold tracking-wide uppercase ring-1 ring-line">
+                    {orderTypeLabel(order)}
+                  </span>
+                  {order.origin === 'pdv' && (
+                    <span className="text-[11px] text-muted" title="Lançado pela equipe no PDV">
+                      PDV{order.staffName ? ` · ${order.staffName.split(' ')[0]}` : ''}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {order.customer && (

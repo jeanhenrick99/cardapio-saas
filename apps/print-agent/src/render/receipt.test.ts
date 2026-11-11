@@ -75,6 +75,12 @@ describe('buildTicket', () => {
     assert.match(preview, /DELIVERY/);
   });
 
+  it('pedido do PDV mostra quem lançou; pedido do cardápio não', () => {
+    const pdv = OrderSchema.parse({ ...order, origin: 'pdv', staffName: 'Ana Souza' });
+    assert.match(renderPreview(buildTicket(pdv, pdv.items, { title: 'Cozinha', columns: 48, showPrices: false })).join('\n'), /PDV - lançado por Ana Souza/);
+    assert.doesNotMatch(renderPreview(buildTicket(order, order.items, { title: 'Cozinha', columns: 48, showPrices: false })).join('\n'), /PDV/);
+  });
+
   it('termina com avanço de papel e corte', () => {
     const receipt = buildTicket(order, order.items, { title: 'x', columns: 32, showPrices: false });
     assert.deepEqual(receipt.lines.slice(-2), [{ kind: 'feed', lines: 2 }, { kind: 'cut' }]);

@@ -109,3 +109,10 @@ export const QrIcon = ({ className }: Props) => (
     <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2M14 18h2v2M18 18h2v2h-2" />
   </svg>
 );
+
+export const PosIcon = ({ className }: Props) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden {...base}>
+    <rect x="4" y="3" width="16" height="10" rx="1.5" />
+    <path d="M8 7h8M3 21h18l-1.5-5h-15L3 21zM9 18.5h6" />
+  </svg>
+);

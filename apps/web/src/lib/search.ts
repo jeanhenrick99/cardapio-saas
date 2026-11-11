@@ -22,3 +22,14 @@ export function filterMenu(categories: MenuCategory[], query: string): MenuCateg
     }))
     .filter((c) => c.products.length > 0);
 }
+
+/**
+ * Ordena para o PDV: produtos cujo NOME contém a busca vêm antes dos que só
+ * combinam pela descrição ("pao" → "Pão de queijo" antes do X-Burguer de "pão brioche").
+ */
+export function rankByName<T extends { name: string }>(products: T[], query: string): T[] {
+  const words = normalize(query).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return products;
+  const byName = (p: T) => words.every((w) => normalize(p.name).includes(w));
+  return [...products.filter(byName), ...products.filter((p) => !byName(p))];
+}
