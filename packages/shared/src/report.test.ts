@@ -45,7 +45,18 @@ describe('buildSalesReport', () => {
       order({ type: 'mesa', tabId: 't1', paymentMethod: null, totalCents: 4_000, items: [item('X-Burguer', 1, 2_500), item('Chopp', 1, 1_500)] }),
       order({ status: 'CANCELED', totalCents: 9_900, items: [item('Pizza', 3, 9_900)] }),
     ],
-    tabs: [{ closedAt: '2026-11-11T01:00:00Z', totalCents: 4_200, paymentMethod: 'Cartão de crédito', serviceFeeCents: 400, discountCents: 200 }],
+    tabs: [
+      {
+        closedAt: '2026-11-11T01:00:00Z',
+        totalCents: 4_200,
+        serviceFeeCents: 400,
+        discountCents: 200,
+        payments: [
+          { method: 'Cartão de crédito', amountCents: 3_000 },
+          { method: 'Dinheiro', amountCents: 1_200 },
+        ],
+      },
+    ],
   });
 
   it('faturamento = pedidos avulsos + contas fechadas; ticket médio por atendimento', () => {
@@ -70,7 +81,16 @@ describe('buildSalesReport', () => {
       { day: '2026-11-11', cents: 3_000, count: 1 },
     ]);
     assert.deepEqual(report.byType.map((t) => t.type), ['mesa', 'retirada', 'delivery']);
-    assert.deepEqual(report.byPayment.map((p) => p.method), ['Pix', 'Cartão de crédito', 'Dinheiro']);
+    assert.deepEqual(
+      report.byPayment.map((p) => [p.method, p.cents]),
+      [
+        ['Pix', 3_000],
+        ['Cartão de crédito', 3_000],
+        ['Dinheiro', 6_200],
+      ],
+    );
+    // a conta dividida em duas formas continua sendo um atendimento
+    assert.equal(report.receiptsCount, 3);
     assert.deepEqual(report.topProducts[0], { name: 'X-Burguer', quantity: 3, cents: 7_500 });
   });
 

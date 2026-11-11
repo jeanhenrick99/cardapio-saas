@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, type PrismaClient, type PrintJob } from '@prisma/client';
 import { OrderSchema, orderTotalCents, type Order, type OrderDraft } from '@cardapio/shared';
 
+/** A conta foi fechada entre a busca e o lançamento: quem chama abre outra e tenta de novo. */
+export class TabClosedError extends Error {}
+
 /**
  * Cria o pedido e o job de impressão na MESMA transação: se um falhar,
  * nenhum é gravado. O número do pedido vem de um incremento atômico no
@@ -14,6 +17,12 @@ export async function createOrder(
   opts: { tabId?: string; cashRegisterId?: string | null } = {},
 ): Promise<{ order: Order; job: PrintJob }> {
   return prisma.$transaction(async (tx) => {
+    if (opts.tabId) {
+      // FOR SHARE espera um fechamento/transferência em andamento; se a conta acabou de fechar, avisa.
+      const open = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "Tab" WHERE id = ${opts.tabId} AND status = 'OPEN' FOR SHARE`;
+      if (open.length === 0) throw new TabClosedError();
+    }
     const { lastOrderNumber } = await tx.restaurant.update({
       where: { id: restaurantId },
       data: { lastOrderNumber: { increment: 1 } },

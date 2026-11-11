@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { Order } from '@cardapio/shared';
+import { formatBRL, type Order } from '@cardapio/shared';
 import type { AgentHub } from '../agents/hub';
 import { prisma } from '../db';
-import { closeTab, normalizeTabNumber, summarizeTab } from '../orders/tabs';
+import { closeTab, normalizeTabNumber, summarizeTab, transferTab } from '../orders/tabs';
 import { loadRestaurantFor, requireUser } from './common';
 
 const SlugParams = z.object({ slug: z.string() });
@@ -94,15 +94,56 @@ export async function tabRoutes(app: FastifyInstance, { hub }: { hub: AgentHub }
     if (!restaurant) return;
     const body = z
       .object({
-        paymentMethod: z.string().trim().min(1).max(50),
+        paymentMethod: z.string().trim().min(1).max(50).optional(),
+        payments: z
+          .array(z.object({ method: z.string().trim().min(1).max(50), amountCents: z.number().int().min(1).max(100_000_000) }))
+          .max(30)
+          .optional(),
         applyServiceFee: z.boolean().default(true),
         discountCents: z.number().int().min(0).max(10_000_000).default(0),
       })
+      .refine((b) => b.paymentMethod || b.payments, 'Informe a forma de pagamento')
       .parse(request.body);
     const result = await closeTab(prisma, restaurant.id, id, { ...body, closedBy: request.user!.name });
     if ('notFound' in result) return reply.code(404).send({ error: 'Conta não encontrada' });
     if ('alreadyClosed' in result) return reply.code(409).send({ error: 'Esta conta já foi fechada.' });
+    const mismatch = 'paymentMismatch' in result ? result.paymentMismatch : undefined;
+    if (mismatch) {
+      const { remainingCents } = mismatch;
+      return reply.code(422).send({
+        error:
+          remainingCents > 0
+            ? `Faltam ${formatBRL(remainingCents)} para fechar a conta.`
+            : remainingCents < 0
+              ? `Os pagamentos passam do total em ${formatBRL(-remainingCents)}.`
+              : 'Confira os valores dos pagamentos.',
+        ...mismatch,
+      });
+    }
     hub.panel.publish(restaurant.id, { type: 'tabs_changed' });
-    return { id, status: 'CLOSED', ...result.totals };
+    hub.panel.publish(restaurant.id, { type: 'cash_changed' });
+    if (!('totals' in result) || !result.totals) return reply.code(409).send({ error: 'Esta conta já foi fechada.' });
+    return { id, status: 'CLOSED', ...result.totals, payments: result.payments };
+  });
+
+  /** Transfere a conta inteira, ou só alguns lançamentos, para outra mesa/comanda. */
+  app.post('/restaurants/:slug/tabs/:id/transfer', async (request, reply) => {
+    const { slug, id } = TabParams.parse(request.params);
+    const restaurant = await loadRestaurantFor(request, reply, slug);
+    if (!restaurant) return;
+    const body = z
+      .object({
+        kind: Kind,
+        number: z.string().trim().min(1).max(20),
+        orderIds: z.array(z.string().uuid()).min(1).max(200).optional(),
+      })
+      .parse(request.body);
+    const result = await transferTab(prisma, restaurant.id, id, { ...body, by: request.user!.name });
+    if ('notFound' in result) return reply.code(404).send({ error: 'Conta não encontrada' });
+    if ('closed' in result) return reply.code(409).send({ error: 'Esta conta já foi fechada.' });
+    if ('sameTab' in result) return reply.code(400).send({ error: 'Escolha outra mesa ou comanda.' });
+    if ('invalidOrders' in result) return reply.code(400).send({ error: 'Escolha lançamentos desta conta.' });
+    hub.panel.publish(restaurant.id, { type: 'tabs_changed' });
+    return result;
   });
 }

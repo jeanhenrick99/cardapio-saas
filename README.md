@@ -107,7 +107,8 @@ O sistema tem duas áreas, como nos sistemas de restaurante:
 
 - **Mesas e comandas** (mesma tela). **Mesas**: grade com as mesas cadastradas na Loja. Mesa livre ou ocupada, com o consumo e há quanto tempo está aberta. Tocar numa mesa abre a **conta**: o primeiro lançamento abre a conta, os seguintes somam nela, e o pedido que o cliente faz pelo **QR Code da mesa** entra na mesma conta, ao vivo
 - **Comandas**: mesma ideia, para o cartão/comanda individual: digite o número para abrir. O cliente não abre comanda pelo cardápio online, só a equipe
-- **Fechar conta**: resumo do consumo (pedidos cancelados não entram), taxa de serviço opcional (10% por padrão, configurável), desconto e forma de pagamento. A mesa fica livre e as contas fechadas nas últimas 12 h aparecem abaixo da grade
+- **Fechar conta**: resumo do consumo (pedidos cancelados não entram), taxa de serviço opcional (10% por padrão, configurável), desconto e **conta dividida**: "dividir em N" reparte o total (R$ 100 em 3 = 33,34 + 33,33 + 33,33) e cada parte pode ter uma forma de pagamento; também dá para digitar os valores (um paga R$ 20 no Pix, o resto em dinheiro). O fechamento só é aceito quando os pagamentos somam o total. A mesa fica livre e as contas fechadas nas últimas 12 h aparecem abaixo da grade
+- **Transferir**: leva a conta inteira, ou só os lançamentos marcados, para outra mesa ou comanda. Se o destino estiver livre, a conta muda de lugar (mantém a hora de abertura); se estiver ocupado, as contas se juntam
 - **Disponibilidade**: no catálogo do PDV, a equipe marca um produto como **esgotado** com um toque, e ele some do cardápio do cliente na hora
 - **Novo pedido** (botão no quadro de Delivery e balcão): pedidos de balcão (retirada) e telefone (delivery). Busca com `/` e Enter, produto sem complementos entra com um toque, e o telefone de um cliente que já pediu preenche nome e endereço. O pedido sai marcado como "PDV · lançado por <funcionário>" no painel e no cupom. "Loja fechada" e pedido mínimo valem só para o cardápio online
 - **Caixa** (no cabeçalho do PDV, sempre visível como aberto ou fechado): abrir com o troco inicial, registrar **sangria** e **suprimento** com motivo, acompanhar as vendas por forma de pagamento e **fechar** informando o dinheiro contado. O sistema mostra o esperado na gaveta (troco + vendas em dinheiro + suprimentos − sangrias) e a diferença (sobra ou falta)
@@ -212,6 +213,8 @@ curl -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/menu
 
 **Conta aberta sem duplicidade.** Mesa e comanda viram uma conta (`Tab`) e cada pedido aponta para ela. Um índice único **parcial** no PostgreSQL (`restaurante + tipo + número` só onde `status = 'OPEN'`) garante uma única conta aberta por mesa, mesmo com o garçom e o QR Code lançando ao mesmo tempo: quem perde a corrida pega a conta já criada. Um teste dispara 6 lançamentos simultâneos na mesa livre e confere que só uma conta foi aberta. O fechamento também só é gravado se a conta ainda estiver aberta, então dois cliques em "Fechar" não fecham duas vezes. O cálculo (taxa, desconto limitado ao valor da conta) fica em [`tab.ts`](packages/shared/src/tab.ts), compartilhado entre o PDV (prévia) e a API (valor gravado).
 
+**Fechar, lançar e transferir ao mesmo tempo.** Fechar e transferir travam a conta (`SELECT ... FOR UPDATE`) e recalculam o total dentro da transação; o lançamento trava em modo compartilhado (`FOR SHARE`) e, se a conta acabou de ser fechada, abre uma conta nova para a mesa. Resultado: um pedido nunca cai numa conta já paga, e o total cobrado é sempre a soma dos pedidos que ficaram nela. Duas transferências cruzadas (mesa 30 → 31 e 31 → 30) travam as contas sempre na mesma ordem, sem deadlock. Os testes de integração disparam essas corridas.
+
 **Caixa amarrado às vendas, não ao relógio.** Cada pedido de balcão/delivery e cada conta de mesa fechada guarda o caixa que estava aberto naquele momento, então o fechamento soma exatamente o que passou por ele, mesmo num expediente que vira a meia-noite. Só existe um caixa aberto por restaurante (índice único parcial, como nas contas), e o resumo é **gravado no fechamento**: cancelar um pedido depois não altera um caixa já conferido. A conta da gaveta fica em [`cash.ts`](packages/shared/src/cash.ts), testada sem banco.
 
 **Relatórios no horário de Brasília.** "Hoje" vai de 00:00 a 23:59 em Brasília, não em UTC: uma conta fechada às 22h conta para o dia certo. O relatório é uma função pura ([`report.ts`](packages/shared/src/report.ts)) que recebe os pedidos e as contas do período e devolve os totais; a API só busca os dados. Faturamento = o que foi **recebido** (pedidos avulsos + contas fechadas, já com taxa de serviço e desconto); os pedidos de mesa entram no consumo e nos produtos, mas não são contados duas vezes.
@@ -314,7 +317,7 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [x] PDV para a equipe lançar pedidos (balcão, telefone, mesas)
 - [x] Mesas e comandas com conta aberta e fechamento de conta
 - [x] Caixa (abertura, sangria, suprimento, fechamento com conferência) e relatórios de vendas
-- [ ] Dividir a conta e transferir itens entre mesas
+- [x] Dividir a conta (várias formas de pagamento) e transferir lançamentos entre mesas e comandas
 - [ ] Painel da cozinha (KDS)
 - [ ] Impressoras USB e Bluetooth
 - [ ] Instalador `.exe` com ícone na bandeja

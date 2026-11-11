@@ -50,9 +50,10 @@ export interface ReportOrder {
 export interface ReportTab {
   closedAt: Date | string;
   totalCents: number;
-  paymentMethod: string | null;
   serviceFeeCents: number;
   discountCents: number;
+  /** Uma conta pode ser paga em várias formas (conta dividida). */
+  payments: { method: string; amountCents: number }[];
 }
 
 export interface SalesReport {
@@ -81,9 +82,14 @@ export function buildSalesReport(input: { from: string; to: string; orders: Repo
   const valid = input.orders.filter((o) => o.status !== 'CANCELED');
   const canceled = input.orders.filter((o) => o.status === 'CANCELED');
 
+  // Um recebimento por atendimento: pedido avulso ou conta fechada (mesmo que paga em várias formas).
   const receipts = [
-    ...valid.filter((o) => !o.tabId).map((o) => ({ at: o.createdAt, paymentMethod: o.paymentMethod, amountCents: o.totalCents })),
-    ...input.tabs.map((t) => ({ at: t.closedAt, paymentMethod: t.paymentMethod, amountCents: t.totalCents })),
+    ...valid.filter((o) => !o.tabId).map((o) => ({ at: o.createdAt, amountCents: o.totalCents })),
+    ...input.tabs.map((t) => ({ at: t.closedAt, amountCents: t.totalCents })),
+  ];
+  const payments = [
+    ...valid.filter((o) => !o.tabId).map((o) => ({ paymentMethod: o.paymentMethod, amountCents: o.totalCents })),
+    ...input.tabs.flatMap((t) => t.payments.map((p) => ({ paymentMethod: p.method, amountCents: p.amountCents }))),
   ];
   const revenueCents = receipts.reduce((s, r) => s + r.amountCents, 0);
 
@@ -128,7 +134,7 @@ export function buildSalesReport(input: { from: string; to: string; orders: Repo
     canceledCents: canceled.reduce((s, o) => s + o.totalCents, 0),
     serviceFeeCents: input.tabs.reduce((s, t) => s + t.serviceFeeCents, 0),
     discountCents: input.tabs.reduce((s, t) => s + t.discountCents, 0),
-    byPayment: totalsByPayment(receipts),
+    byPayment: totalsByPayment(payments),
     byType: [...typeMap.values()].sort((a, b) => typeRank(a.type) - typeRank(b.type)),
     byDay: [...byDayMap.values()],
     topProducts: [...productMap.values()].sort((a, b) => b.quantity - a.quantity || b.cents - a.cents).slice(0, topN),

@@ -27,7 +27,7 @@ export async function reportRoutes(app: FastifyInstance) {
       }),
       prisma.tab.findMany({
         where: { restaurantId: restaurant.id, status: 'CLOSED', closedAt: { gte: start, lt: end } },
-        select: { closedAt: true, totalCents: true, paymentMethod: true, serviceFeeCents: true, discountCents: true },
+        select: { closedAt: true, totalCents: true, serviceFeeCents: true, discountCents: true, payments: { select: { method: true, amountCents: true } } },
       }),
       prisma.cashRegister.findMany({
         where: { restaurantId: restaurant.id, status: 'CLOSED', closedAt: { gte: start, lt: end } },
@@ -50,7 +50,7 @@ export async function reportRoutes(app: FastifyInstance) {
       tabs: tabs.map((t) => ({
         closedAt: t.closedAt!,
         totalCents: t.totalCents ?? 0,
-        paymentMethod: t.paymentMethod,
+        payments: t.payments,
         serviceFeeCents: t.serviceFeeCents ?? 0,
         discountCents: t.discountCents ?? 0,
       })),

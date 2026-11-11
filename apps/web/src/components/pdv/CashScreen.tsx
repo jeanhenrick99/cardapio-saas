@@ -68,7 +68,7 @@ export function CashScreen({ slug }: { slug: string }) {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <Stat label="Vendido neste caixa" value={formatBRL(current.summary.salesCents)} hint={`${current.summary.salesCount} venda(s)`} />
+            <Stat label="Vendido neste caixa" value={formatBRL(current.summary.salesCents)} hint={`${current.summary.salesCount} pagamento(s)`} />
             <Stat label="Em dinheiro" value={formatBRL(current.summary.cashSalesCents)} hint="vendas pagas em dinheiro" />
             <Stat label="Dinheiro esperado na gaveta" value={formatBRL(current.summary.expectedCashCents)} hint="troco + dinheiro + suprimentos − sangrias" strong />
           </div>

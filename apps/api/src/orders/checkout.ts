@@ -4,7 +4,7 @@ import type { AgentHub } from '../agents/hub';
 import { buildOrderDraft, checkRestaurantRules } from '../menu/pricing';
 import { loadPricingProducts } from '../menu/queries';
 import { openCashRegisterId } from './cash';
-import { createOrder } from './service';
+import { createOrder, TabClosedError } from './service';
 import { getOrOpenTab, normalizeTabNumber } from './tabs';
 
 /**
@@ -39,19 +39,24 @@ export async function placeOrder(
   }
   // Mesa e comanda: o pedido entra na conta aberta (ou abre uma nova).
   let tabId: string | undefined;
+  const openTab = () =>
+    getOrOpenTab(prisma, restaurantId, draft.type === 'mesa' ? 'MESA' : 'COMANDA', draft.table!, opts.staff?.name ?? 'Cliente (QR Code)');
   if ((draft.type === 'mesa' || draft.type === 'comanda') && draft.table) {
     draft.table = normalizeTabNumber(draft.table);
-    tabId = await getOrOpenTab(
-      prisma,
-      restaurantId,
-      draft.type === 'mesa' ? 'MESA' : 'COMANDA',
-      draft.table,
-      opts.staff?.name ?? 'Cliente (QR Code)',
-    );
+    tabId = await openTab();
   }
 
   const cashRegisterId = tabId ? null : await openCashRegisterId(prisma, restaurantId);
-  const { order, job } = await createOrder(prisma, restaurantId, draft, { tabId, cashRegisterId });
+  let created;
+  try {
+    created = await createOrder(prisma, restaurantId, draft, { tabId, cashRegisterId });
+  } catch (err) {
+    // A conta fechou no mesmo instante: o pedido vai para uma conta nova da mesa.
+    if (!(err instanceof TabClosedError)) throw err;
+    tabId = await openTab();
+    created = await createOrder(prisma, restaurantId, draft, { tabId, cashRegisterId });
+  }
+  const { order, job } = created;
   const sent = await hub.dispatch(job.id);
   hub.panel.publish(restaurantId, { type: 'order_created', orderId: order.id, number: order.number });
   if (tabId) hub.panel.publish(restaurantId, { type: 'tabs_changed' });

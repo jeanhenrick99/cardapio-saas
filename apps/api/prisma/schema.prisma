@@ -297,6 +297,7 @@ model Tab {
   openedBy        String?
   closedAt        DateTime?
   closedBy        String?
+  /// Resumo das formas usadas ("Pix" ou "Pix + Dinheiro"). Os valores ficam em TabPayment.
   paymentMethod   String?
   subtotalCents   Int?
   serviceFeeCents Int?
@@ -308,6 +309,7 @@ model Tab {
   restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   cashRegister CashRegister? @relation(fields: [cashRegisterId], references: [id])
   orders       Order[]
+  payments     TabPayment[]
 
   @@index([restaurantId, status])
   @@index([restaurantId, closedAt])
@@ -362,4 +364,18 @@ model CashMovement {
   register CashRegister @relation(fields: [registerId], references: [id], onDelete: Cascade)
 
   @@index([registerId])
+}
+
+/// Pagamento de uma conta. Conta dividida = vários pagamentos (ex.: parte no Pix, parte em dinheiro).
+model TabPayment {
+  id          String   @id @default(uuid())
+  tabId       String
+  method      String
+  amountCents Int
+  createdAt   DateTime @default(now())
+  createdBy   String
+
+  tab Tab @relation(fields: [tabId], references: [id], onDelete: Cascade)
+
+  @@index([tabId])
 }

@@ -14,11 +14,12 @@ async function receiptsOf(prisma: PrismaClient, registerId: string) {
       where: { cashRegisterId: registerId, tabId: null, status: { not: 'CANCELED' } },
       select: { paymentMethod: true, totalCents: true },
     }),
-    prisma.tab.findMany({ where: { cashRegisterId: registerId, status: 'CLOSED' }, select: { paymentMethod: true, totalCents: true } }),
+    // Conta dividida: cada pagamento entra na sua forma (a parte em dinheiro vai para a gaveta).
+    prisma.tabPayment.findMany({ where: { tab: { cashRegisterId: registerId, status: 'CLOSED' } }, select: { method: true, amountCents: true } }),
   ]);
   return [
     ...orders.map((o) => ({ paymentMethod: o.paymentMethod, amountCents: o.totalCents })),
-    ...tabs.map((t) => ({ paymentMethod: t.paymentMethod, amountCents: t.totalCents ?? 0 })),
+    ...tabs.map((p) => ({ paymentMethod: p.method, amountCents: p.amountCents })),
   ];
 }
 
