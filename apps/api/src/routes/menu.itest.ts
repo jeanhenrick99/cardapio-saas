@@ -297,3 +297,36 @@ describe('vitrine do restaurante', () => {
     assert.equal(p.imageUrl, 'https://exemplo.com/salmao.jpg');
   });
 });
+
+describe('painel: pedidos e configurações', () => {
+  it('lista os pedidos mais recentes com itens, total e status da impressão', async () => {
+    const owner = await signup(app);
+    const productId = await createSimpleProduct(app, owner, 1500);
+    for (const q of [1, 2]) {
+      await app.inject({ method: 'POST', url: `/public/restaurants/${owner.slug}/orders`, payload: tableOrder(productId, q) });
+    }
+    const res = await app.inject({ url: `/restaurants/${owner.slug}/orders`, headers: auth(owner.token) });
+    assert.equal(res.statusCode, 200);
+    const orders = res.json<{ number: number; totalCents: number; table: string; items: unknown[]; print: { status: string } }[]>();
+    assert.deepEqual(orders.map((o) => [o.number, o.totalCents]), [[2, 3000], [1, 1500]]);
+    assert.equal(orders[0]!.table, '1');
+    assert.equal(orders[0]!.print.status, 'QUEUED');
+  });
+
+  it('pedidos de um restaurante não aparecem para outro', async () => {
+    const a = await signup(app);
+    const b = await signup(app);
+    const productId = await createSimpleProduct(app, a);
+    await app.inject({ method: 'POST', url: `/public/restaurants/${a.slug}/orders`, payload: tableOrder(productId) });
+    const res = await app.inject({ url: `/restaurants/${a.slug}/orders`, headers: auth(b.token) });
+    assert.equal(res.statusCode, 404);
+  });
+
+  it('lê as configurações sem expor dados internos', async () => {
+    const owner = await signup(app);
+    const res = await app.inject({ url: `/restaurants/${owner.slug}/settings`, headers: auth(owner.token) });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.json().acceptingOrders, true);
+    assert.equal(res.json().lastOrderNumber, undefined);
+  });
+});

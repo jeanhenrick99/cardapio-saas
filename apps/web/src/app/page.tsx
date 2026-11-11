@@ -17,6 +17,12 @@ export default function Home() {
       <Link href="/r/demo" className="text-center text-sm text-gold underline-offset-4 hover:underline">
         ou pedir para retirada / delivery
       </Link>
+      <div className="mt-6 border-t border-line pt-6 text-center text-sm text-muted">
+        É dono de restaurante?{' '}
+        <Link href="/login" className="font-semibold text-gold underline-offset-4 hover:underline">
+          Acessar o painel
+        </Link>
+      </div>
     </main>
   );
 }

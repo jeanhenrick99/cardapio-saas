@@ -2,7 +2,7 @@
 
 Plataforma de cardápio digital e pedidos para restaurantes, com **impressão automática na cozinha** via um agente local que fala ESC/POS direto com as impressoras térmicas.
 
-> 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular** (mesa, retirada ou delivery), API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
+> 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular**, **painel do restaurante** (pedidos em tempo real, abrir/fechar a loja, impressoras) (mesa, retirada ou delivery), API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
 
 ## Como funciona
 
@@ -27,7 +27,7 @@ O navegador não consegue imprimir em silêncio numa térmica, e a nuvem não en
 
 ```
 apps/
-  web/           Cardápio do cliente: Next.js 16, React 19 e Tailwind CSS 4
+  web/           Cardápio do cliente e painel do restaurante: Next.js 16, React 19 e Tailwind CSS 4
   api/           API: Fastify, Prisma, PostgreSQL e o hub WebSocket dos agentes
   print-agent/   Agente de impressão (Node + TypeScript)
 packages/
@@ -70,9 +70,19 @@ Abra **http://localhost:3000/r/demo?mesa=7** e faça um pedido como cliente da m
 
 > 📱 **Para testar no celular:** conecte-o no mesmo Wi-Fi e abra o endereço "Network" que o Next mostra ao iniciar (ex.: `http://192.168.0.10:3000/r/demo?mesa=7`). É exatamente o link que iria no QR Code da mesa.
 
+### Painel do restaurante
+
+Abra **http://localhost:3000/login** e clique em **"Entrar como demonstração"** (ou use `demo@cardapio.dev` / `demo12345`). O painel tem três abas:
+
+- **Pedidos**: os pedidos chegam sozinhos (atualização a cada 5 s), com destaque para os novos e o status da impressão de cada um
+- **Loja**: abrir/fechar para pedidos, tempos de retirada e entrega, pedido mínimo do delivery, logo e capa
+- **Impressoras**: computadores conectados (online/offline), geração do código de pareamento e revogação
+
+O funcionário (`STAFF`) vê tudo, mas só o dono altera a loja e as impressoras.
+
 ### Pareando o agente
 
-Gere um código de pareamento para o restaurante `demo` (vale por 10 minutos e só pode ser usado uma vez). O script faz login com o usuário demo:
+Gere um código de pareamento na aba **Impressoras** do painel, ou pelo terminal (vale por 10 minutos e só pode ser usado uma vez):
 
 ```bash
 npm run pairing-code
@@ -240,7 +250,9 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [ ] Convite de funcionários por e-mail
 - [ ] Fotos dos produtos
 - [ ] Taxa de entrega por bairro e horário de funcionamento
-- [ ] Painel do restaurante com status das impressoras em tempo real
+- [x] Painel do restaurante: pedidos em tempo real, loja e impressoras
+- [ ] Editor do cardápio no painel
+- [ ] Pedidos em tempo real por WebSocket/SSE (hoje: atualização a cada 5 s)
 - [ ] Painel da cozinha (KDS)
 - [ ] Impressoras USB e Bluetooth
 - [ ] Instalador `.exe` com ícone na bandeja

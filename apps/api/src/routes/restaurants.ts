@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { CheckoutSchema } from '@cardapio/shared';
+import { CheckoutSchema, type Order } from '@cardapio/shared';
 import type { AgentHub } from '../agents/hub';
 import { generatePairingCode, hashToken } from '../auth/tokens';
 import { prisma } from '../db';
@@ -50,6 +50,42 @@ export async function restaurantRoutes(app: FastifyInstance, { hub }: { hub: Age
     const { order, job, sent } = await placeOrder(prisma, hub, restaurant.id, checkout);
     request.log.info({ orderNumber: order.number, jobId: job.id, sent }, sent ? 'Pedido enviado ao agente' : 'Pedido na fila: agente offline');
     return reply.code(201).send({ order, printJob: { id: job.id, status: sent ? 'SENT' : 'QUEUED' } });
+  });
+
+  /** Configurações atuais da vitrine (para o painel). */
+  app.get('/restaurants/:slug/settings', async (request, reply) => {
+    const { slug } = SlugParams.parse(request.params);
+    const restaurant = await loadRestaurantFor(request, reply, slug);
+    if (!restaurant) return;
+    const { lastOrderNumber: _lastOrderNumber, ...settings } = restaurant;
+    return settings;
+  });
+
+  /**
+   * Últimos pedidos com o status da impressão, para a tela de pedidos do painel.
+   * O painel consulta esta rota a cada poucos segundos.
+   */
+  app.get('/restaurants/:slug/orders', async (request, reply) => {
+    const { slug } = SlugParams.parse(request.params);
+    const restaurant = await loadRestaurantFor(request, reply, slug);
+    if (!restaurant) return;
+    const { limit } = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50) }).parse(request.query);
+
+    const orders = await prisma.order.findMany({
+      where: { restaurantId: restaurant.id },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: { printJobs: { orderBy: { createdAt: 'desc' }, take: 1 } },
+    });
+    return orders.map((o) => {
+      const data = o.data as unknown as Order;
+      const job = o.printJobs[0];
+      return {
+        ...data,
+        totalCents: o.totalCents,
+        print: job ? { status: job.status, printers: job.printers, completedAt: job.completedAt } : null,
+      };
+    });
   });
 
   /** Abre/fecha o restaurante e ajusta tempos, pedido mínimo e imagens. Só o dono. */
