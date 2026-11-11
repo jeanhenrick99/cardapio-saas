@@ -5,6 +5,7 @@ import { formatBRL } from '@cardapio/shared';
 import { api, ApiError } from '@/lib/client-api';
 import { centsToInput, parseBRL } from '@/lib/panel';
 import type { Role, StoreSettings } from '@/lib/types';
+import { ImageUploader } from './ImageUploader';
 import { card, inputClass, primaryButton } from './styles';
 
 interface Form {
@@ -134,15 +135,26 @@ export function StoreSettingsForm({ slug, role }: { slug: string; role: Role }) 
           </label>
         </div>
 
-        <label className="block">
-          <span className="mb-1 block text-sm font-semibold">Link do logo</span>
-          <input type="url" placeholder="https://..." disabled={!canEdit} value={form.logoUrl} onChange={set('logoUrl')} className={inputClass} />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm font-semibold">Link da imagem de capa</span>
-          <input type="url" placeholder="https://..." disabled={!canEdit} value={form.coverUrl} onChange={set('coverUrl')} className={inputClass} />
-          <span className="mt-1 block text-xs text-muted">Sem imagem, o cardápio mostra um banner com o nome do restaurante.</span>
-        </label>
+        <ImageUploader
+          slug={slug}
+          label="Logo"
+          value={form.logoUrl}
+          onChange={(v) => setForm({ ...form, logoUrl: v })}
+          maxSize={512}
+          disabled={!canEdit}
+        />
+        <div>
+          <ImageUploader
+            slug={slug}
+            label="Imagem de capa"
+            value={form.coverUrl}
+            onChange={(v) => setForm({ ...form, coverUrl: v })}
+            maxSize={1600}
+            shape="wide"
+            disabled={!canEdit}
+          />
+          <span className="mt-1 block text-xs text-muted">Sem imagem, o cardápio mostra um banner com o nome do restaurante. Lembre de clicar em Salvar.</span>
+        </div>
 
         {canEdit && (
           <div className="flex items-center justify-end gap-3">

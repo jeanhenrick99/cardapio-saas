@@ -32,6 +32,7 @@ model Restaurant {
   memberships  Membership[]
   categories   Category[]
   products     Product[]
+  images       Image[]
 }
 
 model User {
@@ -221,4 +222,21 @@ model Option {
   group OptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@index([groupId, position])
+}
+
+/// Fotos enviadas pelo restaurante (produtos, logo e capa).
+/// Ficam no próprio banco (já comprimidas no navegador, ~100 KB) porque o disco
+/// do servidor gratuito é apagado a cada deploy. O acesso passa por src/images/storage.ts,
+/// então trocar por um serviço de arquivos (S3, R2, Cloudinary) mexe em um lugar só.
+model Image {
+  id           String   @id @default(uuid())
+  restaurantId String
+  contentType  String
+  size         Int
+  data         Bytes
+  createdAt    DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
 }

@@ -6,7 +6,8 @@ import { generatePairingCode, hashToken } from '../auth/tokens';
 import { prisma } from '../db';
 import { placeOrder } from '../orders/checkout';
 import { loadRestaurantFor, requireUser } from './common';
-import { RestaurantInputSchema } from './schemas';
+import { ImageRefSchema, RestaurantInputSchema } from './schemas';
+import { IMAGE_MAX_BYTES, IMAGE_TYPES, saveImage, sniffImageType } from '../images/storage';
 
 const PAIRING_CODE_TTL_MS = 10 * 60 * 1000;
 
@@ -16,8 +17,8 @@ const SlugParams = z.object({ slug: z.string() });
 const SettingsBody = z
   .object({
     name: z.string().trim().min(2).max(100),
-    logoUrl: z.string().url().max(500).nullable(),
-    coverUrl: z.string().url().max(500).nullable(),
+    logoUrl: ImageRefSchema.nullable(),
+    coverUrl: ImageRefSchema.nullable(),
     acceptingOrders: z.boolean(),
     pickupMinutes: z.number().int().min(0).max(600),
     deliveryMinutes: z.number().int().min(0).max(600),
@@ -61,6 +62,23 @@ export async function restaurantRoutes(app: FastifyInstance, { hub }: { hub: Age
     const restaurant = await loadRestaurantFor(request, reply, slug);
     if (!restaurant) return;
     return hub.panel.issueToken(restaurant.id);
+  });
+
+  // Fotos chegam como bytes crus (Content-Type image/webp, image/jpeg ou image/png).
+  app.addContentTypeParser([...IMAGE_TYPES], { parseAs: 'buffer', bodyLimit: IMAGE_MAX_BYTES }, (_req, body, done) =>
+    done(null, body),
+  );
+
+  /** Envia uma foto (produto, logo ou capa). Só o dono. Devolve o caminho para usar em imageUrl/logoUrl/coverUrl. */
+  app.post('/restaurants/:slug/images', async (request, reply) => {
+    const { slug } = SlugParams.parse(request.params);
+    const restaurant = await loadRestaurantFor(request, reply, slug, ['OWNER']);
+    if (!restaurant) return;
+    const data = request.body;
+    if (!Buffer.isBuffer(data) || data.length === 0) return reply.code(400).send({ error: 'Envie o arquivo da foto' });
+    const type = sniffImageType(data);
+    if (!type) return reply.code(415).send({ error: 'O arquivo não é uma foto válida (use JPG, PNG ou WebP)' });
+    return reply.code(201).send(await saveImage(prisma, restaurant.id, data, type));
   });
 
   /** Configurações atuais da vitrine (para o painel). */

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { loadAdminMenu } from '../menu/queries';
 import { loadRestaurantFor, requireUser } from './common';
+import { ImageRefSchema } from './schemas';
 
 const SlugParams = z.object({ slug: z.string() });
 const IdParams = SlugParams.extend({ id: z.string().uuid() });
@@ -40,7 +41,7 @@ const ProductBody = z.object({
   position: z.number().int().min(0).default(0),
   active: z.boolean().default(true),
   featured: z.boolean().default(false),
-  imageUrl: z.string().url().max(500).nullish(),
+  imageUrl: ImageRefSchema.nullish(),
   optionGroups: z.array(OptionGroupBody).max(20).default([]),
 });
 

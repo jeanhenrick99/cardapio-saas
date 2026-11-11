@@ -1,3 +1,4 @@
+import { isImageRef } from '@cardapio/shared';
 import { centsToInput, parseBRL } from './panel';
 
 // ---------- Formato que a API devolve em GET /restaurants/:slug/menu ----------
@@ -146,7 +147,7 @@ export function validateProductForm(form: ProductForm): { body: ProductBody | nu
   if (!sector) errors.push('Informe o setor de produção (ex.: cozinha ou bar).');
 
   const imageUrl = form.imageUrl.trim();
-  if (imageUrl && !/^https?:\/\/\S+$/i.test(imageUrl)) errors.push('O link da foto precisa começar com http:// ou https://.');
+  if (imageUrl && !isImageRef(imageUrl)) errors.push('O link da foto precisa começar com http:// ou https://.');
 
   const optionGroups: ProductBody['optionGroups'] = [];
   form.groups.forEach((g, gi) => {

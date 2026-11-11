@@ -187,6 +187,8 @@ curl -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/menu
 
 **Carrinho que sobrevive a recarregar a página.** O carrinho fica salvo no celular (`localStorage`). Ao voltar, ele é conferido com o cardápio atual: itens que saíram são removidos e os preços são atualizados. A lógica do carrinho fica em funções puras ([`lib/cart.ts`](apps/web/src/lib/cart.ts)), testadas sem navegador. A interface valida mínimo e máximo dos complementos para dar resposta imediata ao cliente, mas quem decide é sempre o servidor.
 
+**Fotos comprimidas no navegador e guardadas no banco.** O painel reduz cada foto para no máximo 1200 px e converte para WebP antes de enviar (uma foto de celular de 3,4 MB vira ~130 KB). Como o disco do servidor gratuito é apagado a cada deploy, as fotos ficam numa tabela do PostgreSQL, atrás de um módulo ([`images/storage.ts`](apps/api/src/images/storage.ts)) que permite trocar por S3/R2/Cloudinary mexendo em um lugar só. A API confere o tipo real do arquivo pelos primeiros bytes (um `.txt` ou um SVG com script renomeado para `.png` é recusado), limita o tamanho e serve cada foto com cache de 1 ano (`immutable`), já que toda foto nova ganha um endereço novo.
+
 **Complementos flexíveis.** Um produto tem grupos com mínimo e máximo de escolhas, o que cobre os casos reais: "ponto da carne" (exatamente 1), "adicionais" (0 a 4), "pizza meio a meio" (1 a 2 sabores). Um produto cujo grupo obrigatório ficou sem opções disponíveis some do cardápio público, porque seria impossível pedi-lo.
 
 **Histórico preservado.** O pedido guarda uma cópia do que foi pedido (nome, preço, complementos). Editar ou apagar um produto não altera pedidos antigos.
@@ -278,7 +280,7 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [x] Cardápio web do cliente (mesa, retirada e delivery)
 - [x] Gerador de QR Code das mesas
 - [ ] Convite de funcionários por e-mail
-- [ ] Fotos dos produtos
+- [x] Fotos dos produtos, logo e capa (enviadas pelo painel)
 - [ ] Taxa de entrega por bairro e horário de funcionamento
 - [x] Painel do restaurante: pedidos em tempo real, loja e impressoras
 - [x] Editor do cardápio no painel

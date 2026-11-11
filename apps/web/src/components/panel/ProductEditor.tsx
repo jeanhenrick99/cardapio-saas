@@ -13,6 +13,7 @@ import {
   type ProductForm,
 } from '@/lib/menu-editor';
 import { Sheet } from '../ui/Sheet';
+import { ImageUploader } from './ImageUploader';
 import { inputClass, primaryButton, secondaryButton } from './styles';
 
 interface Props {
@@ -131,10 +132,9 @@ export function ProductEditor({ slug, productId, initial, categories, sectors, o
             </datalist>
             <span className="mt-1 block text-xs text-muted">Define em qual impressora o item sai (cozinha, bar...).</span>
           </label>
-          <label className="block">
-            <span className="mb-1 block text-sm font-semibold">Link da foto <span className="font-normal text-muted">(opcional)</span></span>
-            <input type="url" value={form.imageUrl} onChange={(e) => set('imageUrl', e.target.value)} className={inputClass} placeholder="https://..." />
-          </label>
+          <div className="sm:col-span-2">
+            <ImageUploader slug={slug} label="Foto do produto (opcional)" value={form.imageUrl} onChange={(v) => set('imageUrl', v)} maxSize={1200} />
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-x-6 gap-y-2">

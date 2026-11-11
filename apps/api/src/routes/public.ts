@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { CheckoutSchema, orderTotalCents } from '@cardapio/shared';
 import type { AgentHub } from '../agents/hub';
 import { prisma } from '../db';
+import { loadImage } from '../images/storage';
 import { loadPublicMenu } from '../menu/queries';
 import { placeOrder } from '../orders/checkout';
 
@@ -26,6 +27,18 @@ export async function publicRoutes(app: FastifyInstance, { hub }: { hub: AgentHu
       },
     });
   }
+
+  /** Serve uma foto enviada. Cada foto tem um ID novo, então pode ficar em cache "para sempre". */
+  app.get('/images/:id', async (request, reply) => {
+    const { id } = z.object({ id: z.string() }).parse(request.params);
+    const image = z.string().uuid().safeParse(id).success ? await loadImage(prisma, id) : null;
+    if (!image) return reply.code(404).send({ error: 'Foto não encontrada' });
+    return reply
+      .header('content-type', image.contentType)
+      .header('cache-control', 'public, max-age=31536000, immutable')
+      .header('x-content-type-options', 'nosniff')
+      .send(Buffer.from(image.data));
+  });
 
   app.get('/public/restaurants/:slug/menu', async (request, reply) => {
     const { slug } = SlugParams.parse(request.params);

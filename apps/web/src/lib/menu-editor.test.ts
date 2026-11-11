@@ -78,6 +78,8 @@ describe('validateProductForm', () => {
   it('valida o link da foto', () => {
     assert.ok(validateProductForm({ ...valid(), imageUrl: 'foto.jpg' }).errors.length > 0);
     assert.equal(validateProductForm({ ...valid(), imageUrl: 'https://exemplo.com/a.jpg' }).body?.imageUrl, 'https://exemplo.com/a.jpg');
+    const uploaded = '/api/images/3f2a1b4c-1d2e-4f5a-8b9c-0d1e2f3a4b5c';
+    assert.equal(validateProductForm({ ...valid(), imageUrl: uploaded }).body?.imageUrl, uploaded);
   });
 });
 
