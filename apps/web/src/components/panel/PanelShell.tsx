@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/client-api';
+import { LiveProvider, useLiveEvents, useLiveStatus } from '@/lib/live';
 import { normalize } from '@/lib/search';
 import type { Me, Role, StoreSettings } from '@/lib/types';
 import { usePolling } from '@/lib/use-polling';
@@ -27,6 +28,8 @@ interface Props {
   slug: string;
   restaurantName: string;
   role: Role;
+  /** Endereço WebSocket da conexão ao vivo (ex.: wss://api.exemplo.com/panel/live). */
+  liveUrl: string;
   children: React.ReactNode;
 }
 
@@ -47,7 +50,15 @@ const initials = (name: string) =>
  * Moldura do painel: menu lateral (restaurante, busca, seções) e barra superior.
  * No computador o menu fica fixo (e pode ser recolhido); no celular vira uma gaveta.
  */
-export function PanelShell({ me, slug, restaurantName, role, children }: Props) {
+export function PanelShell(props: Props) {
+  return (
+    <LiveProvider slug={props.slug} url={props.liveUrl}>
+      <ShellFrame {...props} />
+    </LiveProvider>
+  );
+}
+
+function ShellFrame({ me, slug, restaurantName, role, children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const base = `/painel/${slug}`;
@@ -75,7 +86,9 @@ export function PanelShell({ me, slug, restaurantName, role, children }: Props) 
   const [switching, setSwitching] = useState(false);
   const [query, setQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
-  const { data: settings } = usePolling<StoreSettings>(`/restaurants/${slug}/settings`, 30_000);
+  const { data: settings, refresh: refreshSettings } = usePolling<StoreSettings>(`/restaurants/${slug}/settings`, 60_000);
+  const liveStatus = useLiveStatus();
+  useLiveEvents((e) => e.type === 'store_updated' && void refreshSettings());
 
   // Preferência de menu recolhido (só no computador) fica salva no navegador.
   useEffect(() => {
@@ -287,6 +300,13 @@ export function PanelShell({ me, slug, restaurantName, role, children }: Props) 
           <span className="truncate text-sm font-semibold tracking-[0.15em] uppercase">{restaurantName}</span>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <span
+              title={liveStatus === 'live' ? 'Conectado: pedidos chegam na hora' : 'Reconectando... (atualizando a cada 5 s enquanto isso)'}
+              className="flex items-center gap-1.5 text-xs font-semibold"
+            >
+              <span className={`h-2 w-2 rounded-full ${liveStatus === 'live' ? 'animate-pulse bg-emerald-400' : 'bg-gold-soft/60'}`} />
+              <span className="hidden sm:inline">{liveStatus === 'live' ? 'Ao vivo' : 'Reconectando'}</span>
+            </span>
             {settings && (
               <Link
                 href={`${base}/loja`}

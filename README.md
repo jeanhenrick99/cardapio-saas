@@ -90,7 +90,7 @@ O painel tem menu lateral (com busca por **Ctrl+K** e seções recolhíveis; no 
 
 - **Início**: pedidos, faturamento e ticket médio do dia, mais atalhos que avisam o que precisa de atenção (loja fechada, impressora offline com pedidos esperando)
 
-- **Pedidos**: os pedidos chegam sozinhos (atualização a cada 5 s), com destaque para os novos e o status da impressão de cada um
+- **Pedidos**: os pedidos chegam **na hora** (WebSocket), com destaque para os novos, campainha opcional, contador no título da aba e o status da impressão de cada um
 - **Cardápio**: categorias (criar, renomear, reordenar, ocultar), produtos com preço, setor de impressão, foto, destaque e complementos (grupos com mínimo e máximo), e um botão rápido de esgotado/disponível
 - **Loja**: abrir/fechar para pedidos, tempos de retirada e entrega, pedido mínimo do delivery, logo e capa
 - **QR Codes das mesas**: gera uma folha para imprimir (A4) com um QR Code por mesa, cada um levando a `/r/<restaurante>?mesa=N`, mais um QR geral para retirada/delivery. Cada QR também pode ser baixado em SVG. Avisa quando o endereço é `localhost` (não abre no celular)
@@ -180,6 +180,8 @@ curl -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/menu
 ## Decisões técnicas
 
 **O cliente nunca define o preço.** O carrinho envia só `productId`, `quantity` e `optionIds`. O servidor busca os preços no banco (sempre filtrando pelo restaurante do pedido) e valida as regras de cada grupo de complementos: mínimo e máximo de escolhas, opção desativada, opção de outro produto. A regra fica em uma função pura ([`menu/pricing.ts`](apps/api/src/menu/pricing.ts)), testada sem banco. Erros de regra de negócio voltam como **422** com uma mensagem que o cliente entende ("escolha pelo menos 1 em Ponto da carne").
+
+**Painel em tempo real.** A API avisa o painel por WebSocket quando um pedido chega, quando a impressão é confirmada, quando um computador conecta/desconecta e quando a loja abre/fecha. Os avisos são só "sinais" (o painel recarrega os dados pela API), então nenhum dado do pedido trafega por esse canal. Como o painel conecta direto na API (outro domínio, sem o cookie de login), ele pede antes um **passe de uso único válido por 60 s** e conecta com ele. Cada restaurante só recebe os próprios avisos. Se a conexão cair, o painel mostra "Reconectando", volta a consultar a cada 5 s e reconecta com espera crescente (1 s, 2 s, 4 s... até 30 s). Testes de integração usam conexões WebSocket reais, inclusive um agente de impressão confirmando um pedido.
 
 **Site e API no mesmo endereço.** O navegador chama `/api/*` no próprio site, e o Next repassa para a API ([`next.config.ts`](apps/web/next.config.ts)). Não precisa de CORS, e o cookie de sessão (que o painel vai usar) funciona com `SameSite=Lax`. O cardápio é carregado no servidor (React Server Component), então a página já chega pronta no celular.
 
@@ -280,7 +282,7 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [ ] Taxa de entrega por bairro e horário de funcionamento
 - [x] Painel do restaurante: pedidos em tempo real, loja e impressoras
 - [x] Editor do cardápio no painel
-- [ ] Pedidos em tempo real por WebSocket/SSE (hoje: atualização a cada 5 s)
+- [x] Pedidos em tempo real por WebSocket, com campainha e reconexão automática
 - [ ] Painel da cozinha (KDS)
 - [ ] Impressoras USB e Bluetooth
 - [ ] Instalador `.exe` com ícone na bandeja

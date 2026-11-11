@@ -98,3 +98,21 @@ function parseWith<T>(schema: z.ZodType<T, z.ZodTypeDef, unknown>, raw: string):
 
 export const parseAgentMessage = (raw: string) => parseWith(AgentMessageSchema, raw);
 export const parseServerMessage = (raw: string) => parseWith(ServerMessageSchema, raw);
+
+// ---------- Eventos ao vivo do painel (API → navegador) ----------
+
+/**
+ * Avisos que a API manda para o painel do restaurante em tempo real.
+ * São só "sinais": o painel recarrega os dados pela API ao recebê-los,
+ * então nenhum dado sensível trafega por este canal.
+ */
+export type PanelEvent =
+  | { type: 'ready' }
+  | { type: 'order_created'; orderId: string; number: number }
+  | { type: 'order_updated'; orderId: string; printStatus: 'PRINTED' | 'FAILED' }
+  | { type: 'agents_changed' }
+  | { type: 'store_updated' };
+
+export const PanelCloseCodes = {
+  UNAUTHORIZED: 4001,
+} as const;

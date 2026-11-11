@@ -4,6 +4,7 @@ import websocket from '@fastify/websocket';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { ZodError } from 'zod';
 import { AgentHub } from './agents/hub';
+import { PanelHub } from './live/panel-hub';
 import { prisma } from './db';
 import { CheckoutError } from './menu/pricing';
 import { env } from './env';
@@ -15,7 +16,7 @@ import { restaurantRoutes } from './routes/restaurants';
 
 export async function buildApp(opts: FastifyServerOptions = {}) {
   const app = Fastify(opts);
-  const hub = new AgentHub(prisma, app.log);
+  const hub = new AgentHub(prisma, app.log, new PanelHub(app.log));
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ZodError) {
@@ -55,6 +56,7 @@ export async function buildApp(opts: FastifyServerOptions = {}) {
 
   app.addHook('onClose', async () => {
     hub.closeAll();
+    hub.panel.closeAll();
     await prisma.$disconnect();
   });
 

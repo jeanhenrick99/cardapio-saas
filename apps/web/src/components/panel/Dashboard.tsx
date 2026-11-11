@@ -7,15 +7,23 @@ import { api } from '@/lib/client-api';
 import type { AdminCategory } from '@/lib/menu-editor';
 import { orderTypeLabel, PRINT_STATUS, summarizeToday, timeAgo } from '@/lib/panel';
 import type { Agent, PanelOrder, StoreSettings } from '@/lib/types';
+import { useLiveEvents, usePollingInterval } from '@/lib/live';
 import { usePolling } from '@/lib/use-polling';
 import { BookIcon, ChartIcon, ExternalIcon, PrinterIcon, ReceiptIcon, StoreIcon } from '../ui/icons';
 
 /** Tela inicial do painel: números do dia e atalhos para o que precisa de atenção. */
 export function Dashboard({ slug }: { slug: string }) {
   const base = `/painel/${slug}`;
-  const { data: orders } = usePolling<PanelOrder[]>(`/restaurants/${slug}/orders?limit=100`, 10_000);
-  const { data: agents } = usePolling<Agent[]>(`/restaurants/${slug}/agents`, 15_000);
-  const { data: settings } = usePolling<StoreSettings>(`/restaurants/${slug}/settings`, 30_000);
+  const interval = usePollingInterval();
+  const { data: orders, refresh: refreshOrders } = usePolling<PanelOrder[]>(`/restaurants/${slug}/orders?limit=100`, interval);
+  const { data: agents, refresh: refreshAgents } = usePolling<Agent[]>(`/restaurants/${slug}/agents`, interval);
+  const { data: settings, refresh: refreshSettings } = usePolling<StoreSettings>(`/restaurants/${slug}/settings`, interval);
+
+  useLiveEvents((event) => {
+    if (event.type === 'order_created' || event.type === 'order_updated') void refreshOrders();
+    if (event.type === 'agents_changed') void refreshAgents();
+    if (event.type === 'store_updated') void refreshSettings();
+  });
   const [menu, setMenu] = useState<AdminCategory[] | null>(null);
 
   useEffect(() => {

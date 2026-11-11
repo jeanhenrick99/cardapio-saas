@@ -10,6 +10,7 @@ import {
   type ServerMessage,
 } from '@cardapio/shared';
 import { hashToken } from '../auth/tokens';
+import type { PanelHub } from '../live/panel-hub';
 
 interface Session {
   agentId: string;
@@ -34,6 +35,8 @@ export class AgentHub {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly log: FastifyBaseLogger,
+    /** Avisa o painel do restaurante em tempo real (agente conectou, impressão confirmada...). */
+    readonly panel: PanelHub,
   ) {}
 
   isOnline(agentId: string): boolean {
@@ -70,6 +73,7 @@ export class AgentHub {
       clearTimeout(helloTimeout);
       if (session && this.byRestaurant.get(session.restaurantId)?.ws === ws) {
         this.byRestaurant.delete(session.restaurantId);
+        this.panel.publish(session.restaurantId, { type: 'agents_changed' });
         this.log.info({ agentId: session.agentId }, '🔴 Agente desconectado');
       }
     });
@@ -113,6 +117,7 @@ export class AgentHub {
     });
     this.sendMessage(ws, { type: 'welcome', agentId: agent.id });
     this.log.info({ agentId: agent.id, name: agent.name, printers: hello.printers }, '🟢 Agente conectado');
+    this.panel.publish(agent.restaurantId, { type: 'agents_changed' });
 
     await this.flushPending(agent.restaurantId);
     return session;
@@ -155,8 +160,19 @@ export class AgentHub {
         completedAt: new Date(),
       },
     });
-    if (count === 0) this.log.warn({ jobId: ack.jobId }, 'ACK para job desconhecido ignorado');
-    else this.log.info({ jobId: ack.jobId, status: ack.status, printers: ack.printers }, 'Job confirmado pelo agente');
+    if (count === 0) {
+      this.log.warn({ jobId: ack.jobId }, 'ACK para job desconhecido ignorado');
+      return;
+    }
+    const job = await this.prisma.printJob.findUnique({ where: { id: ack.jobId }, select: { orderId: true } });
+    if (job) {
+      this.panel.publish(session.restaurantId, {
+        type: 'order_updated',
+        orderId: job.orderId,
+        printStatus: ack.status === 'printed' ? 'PRINTED' : 'FAILED',
+      });
+    }
+    this.log.info({ jobId: ack.jobId, status: ack.status, printers: ack.printers }, 'Job confirmado pelo agente');
   }
 
   private sendMessage(ws: WebSocket, msg: ServerMessage): void {

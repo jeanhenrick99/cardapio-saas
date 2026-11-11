@@ -10,8 +10,11 @@ export default async function PanelLayout({ children, params }: { children: Reac
   const membership = me.restaurants.find((r) => r.slug === slug);
   if (!membership) notFound();
 
+  // O painel conecta direto na API por WebSocket (http→ws, https→wss).
+  const liveUrl = `${(process.env.API_URL ?? 'http://localhost:8080').replace(/^http/, 'ws')}/panel/live`;
+
   return (
-    <PanelShell me={me} slug={slug} restaurantName={membership.name} role={membership.role}>
+    <PanelShell me={me} slug={slug} restaurantName={membership.name} role={membership.role} liveUrl={liveUrl}>
       {children}
     </PanelShell>
   );

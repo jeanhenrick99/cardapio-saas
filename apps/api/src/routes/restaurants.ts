@@ -52,6 +52,17 @@ export async function restaurantRoutes(app: FastifyInstance, { hub }: { hub: Age
     return reply.code(201).send({ order, printJob: { id: job.id, status: sent ? 'SENT' : 'QUEUED' } });
   });
 
+  /**
+   * Passe de uso único (60 s) para o painel abrir a conexão ao vivo em /panel/live.
+   * Esta rota usa o cookie de login; a conexão WebSocket (em outro domínio) usa só o passe.
+   */
+  app.post('/restaurants/:slug/live-token', async (request, reply) => {
+    const { slug } = SlugParams.parse(request.params);
+    const restaurant = await loadRestaurantFor(request, reply, slug);
+    if (!restaurant) return;
+    return hub.panel.issueToken(restaurant.id);
+  });
+
   /** Configurações atuais da vitrine (para o painel). */
   app.get('/restaurants/:slug/settings', async (request, reply) => {
     const { slug } = SlugParams.parse(request.params);
@@ -94,7 +105,9 @@ export async function restaurantRoutes(app: FastifyInstance, { hub }: { hub: Age
     const restaurant = await loadRestaurantFor(request, reply, slug, ['OWNER']);
     if (!restaurant) return;
     const data = SettingsBody.parse(request.body);
-    return prisma.restaurant.update({ where: { id: restaurant.id }, data, omit: { lastOrderNumber: true } });
+    const updated = await prisma.restaurant.update({ where: { id: restaurant.id }, data, omit: { lastOrderNumber: true } });
+    hub.panel.publish(restaurant.id, { type: 'store_updated' });
+    return updated;
   });
 
   app.get('/restaurants/:slug/print-jobs', async (request, reply) => {

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { formatBRL, itemTotalCents } from '@cardapio/shared';
 import { orderTypeLabel, PRINT_STATUS, timeAgo } from '@/lib/panel';
 import type { PanelOrder } from '@/lib/types';
+import { playChime, unlockAudio } from '@/lib/chime';
+import { useLiveEvents, useLiveStatus, usePollingInterval } from '@/lib/live';
 import { usePolling } from '@/lib/use-polling';
 
 const TONE: Record<(typeof PRINT_STATUS)[keyof typeof PRINT_STATUS]['tone'], string> = {
@@ -14,9 +16,57 @@ const TONE: Record<(typeof PRINT_STATUS)[keyof typeof PRINT_STATUS]['tone'], str
 };
 
 const NEW_HIGHLIGHT_MS = 15_000;
+const SOUND_KEY = 'painel:som-pedidos';
 
 export function OrdersBoard({ slug }: { slug: string }) {
-  const { data: orders, error, updatedAt } = usePolling<PanelOrder[]>(`/restaurants/${slug}/orders`, 5000);
+  const liveStatus = useLiveStatus();
+  const { data: orders, error, updatedAt, refresh } = usePolling<PanelOrder[]>(`/restaurants/${slug}/orders`, usePollingInterval());
+  const [sound, setSound] = useState(false);
+  const [unseen, setUnseen] = useState(0);
+
+  // Preferência de som salva no navegador; o áudio só é liberado no primeiro clique na página.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(SOUND_KEY) !== '1') return;
+    } catch {
+      return;
+    }
+    setSound(true);
+    const unlock = () => unlockAudio();
+    document.addEventListener('pointerdown', unlock, { once: true });
+    return () => document.removeEventListener('pointerdown', unlock);
+  }, []);
+
+  function toggleSound() {
+    const next = !sound;
+    setSound(next);
+    try {
+      localStorage.setItem(SOUND_KEY, next ? '1' : '0');
+    } catch {
+      // ignora
+    }
+    if (next) {
+      unlockAudio();
+      playChime(); // amostra do som
+    }
+  }
+
+  useLiveEvents((event) => {
+    if (event.type === 'order_created' || event.type === 'order_updated') void refresh();
+    if (event.type === 'order_created') {
+      if (sound) playChime();
+      if (document.visibilityState === 'hidden') setUnseen((n) => n + 1);
+    }
+  });
+
+  // Mostra "(2) Pedidos" no título da aba enquanto você está em outra aba.
+  useEffect(() => {
+    const base = 'Pedidos · Bistroo';
+    document.title = unseen > 0 ? `(${unseen}) ${base}` : base;
+    const onVisible = () => document.visibilityState === 'visible' && setUnseen(0);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [unseen]);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const known = useRef<Set<string> | null>(null);
   const [, setTick] = useState(0);
@@ -48,8 +98,17 @@ export function OrdersBoard({ slug }: { slug: string }) {
           <h1 id="pedidos" className="font-display text-3xl font-semibold">
             Pedidos
           </h1>
-          <p className="text-sm text-muted">Atualiza sozinho a cada 5 segundos.</p>
+          <p className="text-sm text-muted">
+            {liveStatus === 'live' ? 'Ao vivo: novos pedidos aparecem na hora.' : 'Reconectando... enquanto isso, atualiza a cada 5 segundos.'}
+          </p>
         </div>
+        <button
+          onClick={toggleSound}
+          aria-pressed={sound}
+          className={`rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ${sound ? 'text-gold ring-gold-deep' : 'text-muted ring-line hover:text-fg'}`}
+        >
+          {sound ? '🔔 Som ligado' : '🔕 Som desligado'}
+        </button>
         <p className="text-xs text-muted" aria-live="polite">
           {error ? <span className="text-red-300">⚠ {error}</span> : updatedAt ? `Atualizado ${timeAgo(new Date(updatedAt).toISOString())}` : 'Carregando...'}
         </p>

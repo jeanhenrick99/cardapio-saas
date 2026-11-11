@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/client-api';
 import { timeAgo } from '@/lib/panel';
 import type { Agent, Role } from '@/lib/types';
+import { useLiveEvents, usePollingInterval } from '@/lib/live';
 import { usePolling } from '@/lib/use-polling';
 import { card, primaryButton } from './styles';
 
 export function PrintersPanel({ slug, role }: { slug: string; role: Role }) {
   const isOwner = role === 'OWNER';
-  const { data: agents, refresh } = usePolling<Agent[]>(`/restaurants/${slug}/agents`, 10_000);
+  const { data: agents, refresh } = usePolling<Agent[]>(`/restaurants/${slug}/agents`, usePollingInterval());
+  useLiveEvents((e) => e.type === 'agents_changed' && void refresh());
   const [pairing, setPairing] = useState<{ code: string; expiresAt: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());

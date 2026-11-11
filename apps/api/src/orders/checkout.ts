@@ -20,5 +20,6 @@ export async function placeOrder(prisma: PrismaClient, hub: AgentHub, restaurant
   checkRestaurantRules(draft, rules);
   const { order, job } = await createOrder(prisma, restaurantId, draft);
   const sent = await hub.dispatch(job.id);
+  hub.panel.publish(restaurantId, { type: 'order_created', orderId: order.id, number: order.number });
   return { order, job, sent };
 }

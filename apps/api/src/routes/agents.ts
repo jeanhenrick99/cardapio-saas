@@ -48,4 +48,10 @@ export async function agentRoutes(app: FastifyInstance, { hub }: { hub: AgentHub
   );
 
   app.get('/agent', { websocket: true }, (socket) => hub.handleConnection(socket));
+
+  /** Conexão ao vivo do painel do restaurante (autenticada pelo passe de /live-token). */
+  app.get('/panel/live', { websocket: true }, (socket, request) => {
+    const { token } = request.query as { token?: string };
+    hub.panel.handleConnection(socket, token);
+  });
 }
