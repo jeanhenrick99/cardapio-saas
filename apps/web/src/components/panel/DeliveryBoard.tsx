@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import {
   advanceLabel,
@@ -16,6 +17,7 @@ import { useLiveEvents, usePollingInterval } from '@/lib/live';
 import { itemsSummary, PRINT_STATUS, waitingLevel } from '@/lib/panel';
 import type { PanelOrder } from '@/lib/types';
 import { usePolling } from '@/lib/use-polling';
+import { primaryButton } from './styles';
 
 type Filter = 'todos' | 'delivery' | 'retirada';
 
@@ -80,9 +82,12 @@ export function DeliveryBoard({ slug }: { slug: string }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-semibold">Delivery e retirada</h1>
+          <h1 className="font-display text-3xl font-semibold">Delivery e balcão</h1>
           <p className="text-sm text-muted">Arraste os cards entre as colunas ou use os botões de cada pedido.</p>
         </div>
+        <Link href={`/pdv/${slug}/delivery/novo`} className={`${primaryButton} order-first w-full text-center sm:order-none sm:ml-auto sm:w-auto`}>
+          + Novo pedido
+        </Link>
         <div className="flex rounded-xl bg-surface-2 p-1 ring-1 ring-line" role="radiogroup" aria-label="Filtrar pedidos">
           {(['todos', 'delivery', 'retirada'] as const).map((f) => (
             <button

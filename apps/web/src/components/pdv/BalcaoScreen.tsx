@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { formatBRL, isSearchablePhone } from '@cardapio/shared';
 import { addLine, cartTotalCents, type CartLine } from '@/lib/cart';
@@ -54,7 +55,7 @@ export function BalcaoScreen({ slug }: { slug: string }) {
     setSubmitting(true);
     try {
       const { order } = await api<{ order: { number: number } }>(`/restaurants/${slug}/orders`, { method: 'POST', body: checkout });
-      setSuccess(`Pedido #${String(order.number).padStart(4, '0')} lançado.`);
+      setSuccess(`Pedido #${String(order.number).padStart(4, '0')} lançado. Ele já aparece no quadro de delivery e balcão.`);
       setLines([]);
       setCustomer(null);
       setForm((f) => ({ ...emptyPdvForm(f.type), paymentMethod: f.paymentMethod }));
@@ -72,7 +73,12 @@ export function BalcaoScreen({ slug }: { slug: string }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="min-w-0">
-        <h1 className="mb-3 font-display text-2xl font-semibold">Balcão · retirada e delivery</h1>
+        <div className="mb-3 flex items-center gap-3">
+          <Link href={`/pdv/${slug}/delivery`} className="rounded-lg px-2 py-1 text-sm text-muted ring-1 ring-line hover:text-fg">
+            ← Quadro
+          </Link>
+          <h1 className="font-display text-2xl font-semibold">Novo pedido · retirada ou delivery</h1>
+        </div>
         <Catalog ref={catalog} slug={slug} onAdd={(line) => { setLines((l) => addLine(l, line)); setSuccess(null); }} />
       </div>
 

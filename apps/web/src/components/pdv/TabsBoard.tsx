@@ -6,48 +6,67 @@ import { useState } from 'react';
 import { formatBRL } from '@cardapio/shared';
 import { useLiveEvents, usePollingInterval } from '@/lib/live';
 import { timeAgo, waitingLevel } from '@/lib/panel';
-import type { TabKind, TabsResponse, TabSummary } from '@/lib/types';
+import type { TabsResponse, TabSummary } from '@/lib/types';
 import { usePolling } from '@/lib/use-polling';
 import { inputClass, primaryButton } from '../panel/styles';
 
-/** Grade de mesas (1..N do cadastro) ou lista de comandas, com as contas abertas e as fechadas recentes. */
-export function TabsBoard({ slug, kind }: { slug: string; kind: TabKind }) {
+const grid = 'grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8';
+
+/** Salão: grade de mesas (1..N do cadastro) e comandas abertas na mesma tela, mais as contas fechadas recentes. */
+export function TabsBoard({ slug }: { slug: string }) {
   const router = useRouter();
-  const { data, refresh } = usePolling<TabsResponse>(`/restaurants/${slug}/tabs?kind=${kind}`, usePollingInterval());
+  const { data, refresh } = usePolling<TabsResponse>(`/restaurants/${slug}/tabs`, usePollingInterval());
   const [comanda, setComanda] = useState('');
   useLiveEvents((e) => (e.type === 'tabs_changed' || e.type === 'order_status') && void refresh());
 
-  const isMesa = kind === 'MESA';
-  const path = (number: string) => `/pdv/${slug}/conta/${isMesa ? 'mesa' : 'comanda'}/${encodeURIComponent(number)}`;
-  const openByNumber = new Map((data?.open ?? []).map((t) => [t.number, t]));
+  const path = (kind: 'mesa' | 'comanda', number: string) => `/pdv/${slug}/conta/${kind}/${encodeURIComponent(number)}`;
+  const open = data?.open ?? [];
+  const mesas = open.filter((t) => t.kind === 'MESA');
+  const comandas = open.filter((t) => t.kind === 'COMANDA');
+  const mesaByNumber = new Map(mesas.map((t) => [t.number, t]));
+  const tableCount = data?.tableCount ?? 0;
 
-  // Mesas: 1..N do cadastro + qualquer mesa aberta fora dessa faixa (ex.: mesa 30 aberta pelo QR Code).
-  const mesaNumbers = isMesa
-    ? [
-        ...Array.from({ length: data?.tableCount ?? 0 }, (_, i) => String(i + 1)),
-        ...(data?.open ?? []).map((t) => t.number).filter((n) => !(Number(n) >= 1 && Number(n) <= (data?.tableCount ?? 0))),
-      ]
-    : [];
-
-  const openCount = data?.open.length ?? 0;
-  const openTotal = (data?.open ?? []).reduce((s, t) => s + t.consumedCents, 0);
+  // 1..N do cadastro + qualquer mesa aberta fora dessa faixa (ex.: mesa 30 aberta pelo QR Code).
+  const mesaNumbers = [
+    ...Array.from({ length: tableCount }, (_, i) => String(i + 1)),
+    ...mesas.map((t) => t.number).filter((n) => !(Number(n) >= 1 && Number(n) <= tableCount)),
+  ];
+  const total = open.reduce((s, t) => s + t.consumedCents, 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold">{isMesa ? 'Mesas' : 'Comandas'}</h1>
-          <p className="text-sm text-muted">
-            {openCount} {isMesa ? 'mesa(s) ocupada(s)' : 'comanda(s) aberta(s)'} · {formatBRL(openTotal)} em consumo
+    <div className="space-y-8">
+      <div>
+        <h1 className="font-display text-2xl font-semibold">Mesas e comandas</h1>
+        <p className="text-sm text-muted">
+          {mesas.length} mesa(s) ocupada(s) · {comandas.length} comanda(s) aberta(s) · {formatBRL(total)} em consumo
+        </p>
+      </div>
+
+      <section aria-label="Mesas" className="space-y-3">
+        <h2 className="text-sm font-semibold tracking-wide text-gold-soft uppercase">Mesas</h2>
+        {data && mesaNumbers.length === 0 && (
+          <p className="rounded-2xl p-6 text-center text-muted ring-1 ring-line">
+            Nenhuma mesa cadastrada. O dono define a quantidade em <strong>Retaguarda → Loja</strong>.
           </p>
-        </div>
-        {!isMesa && (
+        )}
+        <ul className={grid}>
+          {mesaNumbers.map((n) => (
+            <li key={n}>
+              <TabTile href={path('mesa', n)} label={n} tab={mesaByNumber.get(n)} />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-label="Comandas" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold tracking-wide text-gold-soft uppercase">Comandas</h2>
           <form
             className="flex gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               const n = comanda.trim();
-              if (n) router.push(path(n));
+              if (n) router.push(path('comanda', n));
             }}
           >
             <input
@@ -62,35 +81,16 @@ export function TabsBoard({ slug, kind }: { slug: string; kind: TabKind }) {
               Abrir
             </button>
           </form>
-        )}
-      </div>
-
-      {isMesa && data && data.tableCount === 0 && mesaNumbers.length === 0 && (
-        <p className="rounded-2xl p-6 text-center text-muted ring-1 ring-line">
-          Nenhuma mesa cadastrada. O dono define a quantidade em <strong>Retaguarda → Loja</strong>.
-        </p>
-      )}
-
-      {isMesa ? (
-        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8">
-          {mesaNumbers.map((n) => (
-            <li key={n}>
-              <TabTile href={path(n)} label={n} tab={openByNumber.get(n)} />
+        </div>
+        {data && comandas.length === 0 && <p className="text-sm text-muted">Nenhuma comanda aberta. Digite o número do cartão para abrir.</p>}
+        <ul className={grid}>
+          {comandas.map((t) => (
+            <li key={t.id}>
+              <TabTile href={path('comanda', t.number)} label={t.number} tab={t} />
             </li>
           ))}
         </ul>
-      ) : (
-        <>
-          {data && data.open.length === 0 && <p className="text-sm text-muted">Nenhuma comanda aberta. Digite o número do cartão para abrir.</p>}
-          <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8">
-            {(data?.open ?? []).map((t) => (
-              <li key={t.id}>
-                <TabTile href={path(t.number)} label={t.number} tab={t} />
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      </section>
 
       {data && data.closed.length > 0 && (
         <section aria-label="Fechadas recentemente">
@@ -99,9 +99,12 @@ export function TabsBoard({ slug, kind }: { slug: string; kind: TabKind }) {
             {data.closed.map((t) => (
               <li key={t.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 text-sm">
                 <span className="font-display text-lg font-semibold">
-                  {isMesa ? 'Mesa' : 'Comanda'} {t.number}
+                  {t.kind === 'MESA' ? 'Mesa' : 'Comanda'} {t.number}
                 </span>
-                <span className="text-muted">fechada {t.closedAt ? timeAgo(t.closedAt) : ''}{t.closedBy ? ` por ${t.closedBy}` : ''}</span>
+                <span className="text-muted">
+                  fechada {t.closedAt ? timeAgo(t.closedAt) : ''}
+                  {t.closedBy ? ` por ${t.closedBy}` : ''}
+                </span>
                 <span className="text-muted">{t.paymentMethod}</span>
                 <span className="ml-auto font-semibold text-gold tabular-nums">{formatBRL(t.totalCents ?? 0)}</span>
               </li>
@@ -125,7 +128,7 @@ function TabTile({ href, label, tab }: { href: string; label: string; tab?: TabS
       </Link>
     );
   }
-  const wait = waitingLevel(tab.openedAt);
+  const { minutes } = waitingLevel(tab.openedAt);
   return (
     <Link
       href={href}
@@ -133,7 +136,7 @@ function TabTile({ href, label, tab }: { href: string; label: string; tab?: TabS
     >
       <span className="font-display text-3xl font-semibold text-fg">{label}</span>
       <span className="text-sm font-semibold text-gold-soft tabular-nums">{formatBRL(tab.consumedCents)}</span>
-      <span className="text-[11px] text-fg/70">{wait.minutes < 60 ? `${wait.minutes} min` : `${Math.floor(wait.minutes / 60)}h${String(wait.minutes % 60).padStart(2, '0')}`}</span>
+      <span className="text-[11px] text-fg/70">{minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, '0')}`}</span>
     </Link>
   );
 }

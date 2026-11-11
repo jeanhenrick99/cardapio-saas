@@ -102,14 +102,14 @@ O sistema tem duas áreas, como nos sistemas de restaurante:
 - **QR Codes das mesas**: gera uma folha para imprimir (A4) com um QR Code por mesa, cada um levando a `/r/<restaurante>?mesa=N`, mais um QR geral para retirada/delivery. Cada QR também pode ser baixado em SVG. Avisa quando o endereço é `localhost` (não abre no celular)
 - **Impressoras**: computadores conectados (online/offline), geração do código de pareamento e revogação
 
-**PDV** (`/pdv/<restaurante>`, dono e equipe): a operação durante o expediente, em tela cheia com abas grandes (pensado para tablet ou monitor no balcão). Funcionário que entra é levado direto para cá e não acessa a retaguarda; o dono tem o botão **Retaguarda** para voltar.
+**PDV** (`/pdv/<restaurante>`, dono e equipe): a operação durante o expediente, em tela cheia com duas abas grandes, **Mesas e comandas** e **Delivery e balcão** (pensado para tablet ou monitor no balcão). Funcionário que entra é levado direto para cá e não acessa a retaguarda; o dono tem o botão **Retaguarda** para voltar.
 
-- **Mesas**: grade com as mesas cadastradas na Loja. Mesa livre ou ocupada, com o consumo e há quanto tempo está aberta. Tocar numa mesa abre a **conta**: o primeiro lançamento abre a conta, os seguintes somam nela, e o pedido que o cliente faz pelo **QR Code da mesa** entra na mesma conta, ao vivo
+- **Mesas e comandas** (mesma tela). **Mesas**: grade com as mesas cadastradas na Loja. Mesa livre ou ocupada, com o consumo e há quanto tempo está aberta. Tocar numa mesa abre a **conta**: o primeiro lançamento abre a conta, os seguintes somam nela, e o pedido que o cliente faz pelo **QR Code da mesa** entra na mesma conta, ao vivo
 - **Comandas**: mesma ideia, para o cartão/comanda individual: digite o número para abrir. O cliente não abre comanda pelo cardápio online, só a equipe
 - **Fechar conta**: resumo do consumo (pedidos cancelados não entram), taxa de serviço opcional (10% por padrão, configurável), desconto e forma de pagamento. A mesa fica livre e as contas fechadas nas últimas 12 h aparecem abaixo da grade
 - **Disponibilidade**: no catálogo do PDV, a equipe marca um produto como **esgotado** com um toque, e ele some do cardápio do cliente na hora
-- **Balcão**: pedidos de balcão (retirada) e telefone (delivery). Busca com `/` e Enter, produto sem complementos entra com um toque, e o telefone de um cliente que já pediu preenche nome e endereço. O pedido sai marcado como "PDV · lançado por <funcionário>" no painel e no cupom. "Loja fechada" e pedido mínimo valem só para o cardápio online
-- **Delivery**: quadro **Kanban** (Recebido → Em preparo → Pronto → Saiu para entrega → Concluído). No computador, arraste os cards; no celular, use os botões de cada pedido. Mostra há quanto tempo o pedido espera (alerta aos 30 e aos 45 min) e atualiza ao vivo para toda a equipe
+- **Novo pedido** (botão no quadro de Delivery e balcão): pedidos de balcão (retirada) e telefone (delivery). Busca com `/` e Enter, produto sem complementos entra com um toque, e o telefone de um cliente que já pediu preenche nome e endereço. O pedido sai marcado como "PDV · lançado por <funcionário>" no painel e no cupom. "Loja fechada" e pedido mínimo valem só para o cardápio online
+- **Delivery e balcão**: quadro **Kanban** (Recebido → Em preparo → Pronto → Saiu para entrega → Concluído). No computador, arraste os cards; no celular, use os botões de cada pedido. Mostra há quanto tempo o pedido espera (alerta aos 30 e aos 45 min) e atualiza ao vivo para toda a equipe
 
 O funcionário (`STAFF`) acessa só o PDV. Cardápio, loja, impressoras e faturamento ficam na retaguarda, com o dono.
 

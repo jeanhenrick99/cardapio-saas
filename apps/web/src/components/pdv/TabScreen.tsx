@@ -30,7 +30,7 @@ export function TabScreen({ slug, kind, number }: { slug: string; kind: 'mesa' |
   const catalog = useRef<CatalogHandle>(null);
   const panelRef = useRef<HTMLElement>(null);
   const title = `${kind === 'mesa' ? 'Mesa' : 'Comanda'} ${number}`;
-  const back = `/pdv/${slug}/${kind === 'mesa' ? 'mesas' : 'comandas'}`;
+  const back = `/pdv/${slug}/salao`;
 
   const load = useCallback(async () => {
     try {
@@ -71,7 +71,7 @@ export function TabScreen({ slug, kind, number }: { slug: string; kind: 'mesa' |
       <div className="min-w-0">
         <div className="mb-3 flex items-center gap-3">
           <Link href={back} className="rounded-lg px-2 py-1 text-sm text-muted ring-1 ring-line hover:text-fg">
-            ← {kind === 'mesa' ? 'Mesas' : 'Comandas'}
+            ← Mesas e comandas
           </Link>
           <h1 className="font-display text-2xl font-semibold">{title}</h1>
         </div>

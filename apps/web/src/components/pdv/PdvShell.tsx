@@ -6,7 +6,7 @@ import { api } from '@/lib/client-api';
 import { LiveProvider, useLiveEvents, useLiveStatus } from '@/lib/live';
 import type { Me, Role, StoreSettings } from '@/lib/types';
 import { usePolling } from '@/lib/use-polling';
-import { BikeIcon, CutleryIcon, LogoutIcon, PosIcon, ReceiptIcon } from '../ui/icons';
+import { BikeIcon, CutleryIcon, LogoutIcon } from '../ui/icons';
 
 interface Props {
   me: Me;
@@ -38,10 +38,8 @@ function Frame({ me, slug, restaurantName, role, children }: Props) {
   useLiveEvents((e) => e.type === 'store_updated' && void refresh());
 
   const tabs = [
-    { href: `${base}/mesas`, also: `${base}/conta/mesa/`, label: 'Mesas', icon: CutleryIcon },
-    { href: `${base}/comandas`, also: `${base}/conta/comanda/`, label: 'Comandas', icon: ReceiptIcon },
-    { href: `${base}/delivery`, label: 'Delivery', icon: BikeIcon },
-    { href: `${base}/balcao`, label: 'Balcão', icon: PosIcon },
+    { href: `${base}/salao`, also: `${base}/conta/`, label: 'Mesas e comandas', icon: CutleryIcon },
+    { href: `${base}/delivery`, label: 'Delivery e balcão', icon: BikeIcon },
   ];
 
   async function logout() {
