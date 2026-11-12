@@ -8,6 +8,7 @@ import { PanelHub } from './live/panel-hub';
 import { prisma } from './db';
 import { CheckoutError } from './menu/pricing';
 import { env } from './env';
+import { adminRoutes } from './routes/admin';
 import { agentRoutes } from './routes/agents';
 import { authRoutes } from './routes/auth';
 import { menuRoutes } from './routes/menu';
@@ -59,6 +60,7 @@ export async function buildApp(opts: FastifyServerOptions = {}) {
   await app.register(cashRoutes, { hub });
   await app.register(reportRoutes);
   await app.register(teamRoutes);
+  await app.register(adminRoutes);
   await app.register(publicRoutes, { hub });
   await app.register(agentRoutes, { hub });
 

@@ -23,6 +23,21 @@ const INVALID_RESET = 'Link inválido, expirado ou já usado. Peça um novo ao r
 const usableInvite = (tokenHash: string) => ({ tokenHash, acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } });
 const usableReset = (tokenHash: string) => ({ tokenHash, usedAt: null, expiresAt: { gt: new Date() } });
 
+/** Cria o convite e devolve o token (mostrado uma vez só). Um convite novo para o mesmo e-mail invalida os anteriores. */
+export async function createInvite(restaurantId: string, input: { name: string; email: string; role: Role; createdBy: string }) {
+  const token = generateLinkToken('inv');
+  const invite = await prisma.$transaction(async (tx) => {
+    await tx.invite.updateMany({
+      where: { restaurantId, email: input.email, acceptedAt: null, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return tx.invite.create({
+      data: { restaurantId, ...input, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + INVITE_TTL_MS) },
+    });
+  });
+  return { invite, token };
+}
+
 /**
  * Equipe do restaurante. O dono convida por link (sem depender de e-mail),
  * muda papéis, remove acessos e gera links de redefinição de senha.
@@ -76,23 +91,7 @@ export async function teamRoutes(app: FastifyInstance) {
       const already = await prisma.membership.findFirst({ where: { restaurantId: restaurant.id, user: { email: body.email } } });
       if (already) return reply.code(409).send({ error: 'Esta pessoa já faz parte da equipe.' });
 
-      const token = generateLinkToken('inv');
-      const invite = await prisma.$transaction(async (tx) => {
-        // Um convite novo para o mesmo e-mail invalida os anteriores (só o último link vale).
-        await tx.invite.updateMany({
-          where: { restaurantId: restaurant.id, email: body.email, acceptedAt: null, revokedAt: null },
-          data: { revokedAt: new Date() },
-        });
-        return tx.invite.create({
-          data: {
-            restaurantId: restaurant.id,
-            ...body,
-            tokenHash: hashToken(token),
-            expiresAt: new Date(Date.now() + INVITE_TTL_MS),
-            createdBy: request.user!.name,
-          },
-        });
-      });
+      const { invite, token } = await createInvite(restaurant.id, { ...body, createdBy: request.user!.name });
       return reply.code(201).send({ id: invite.id, name: invite.name, email: invite.email, role: invite.role, expiresAt: invite.expiresAt, token });
     });
 

@@ -13,6 +13,10 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false # pedido na criação: cole a connection string do Neon
+      - key: PLATFORM_ADMIN_EMAIL
+        sync: false # seu e-mail: vira administrador da plataforma (área /admin)
+      - key: PLATFORM_ADMIN_PASSWORD
+        sync: false # senha inicial (12+ caracteres); só é usada para criar a conta
       - key: TRUST_PROXY
         value: "true"
       - key: LOG_LEVEL

@@ -2,7 +2,9 @@
 import { hashPassword } from '../auth/password';
 import { prisma } from '../db';
 import { DEMO_RESTAURANT, DEMO_STAFF, DEMO_USER } from './demo';
+import { env } from '../env';
 import { DEMO_FEATURED, DEMO_MENU } from './demo-menu';
+import { syncPlatformAdmins } from './platform-admin';
 
 const restaurant = await prisma.restaurant.upsert({
   where: { slug: DEMO_RESTAURANT.slug },
@@ -83,4 +85,6 @@ if (restaurant.tableCount === 0) {
 console.log(`✔ Restaurante "${restaurant.name}" (slug: ${restaurant.slug})`);
 console.log(`✔ Usuário ${DEMO_USER.email} / senha ${DEMO_USER.password} (dono do restaurante)`);
 console.log(`✔ Usuário ${DEMO_STAFF.email} / senha ${DEMO_STAFF.password} (garçom: só PDV)`);
+await syncPlatformAdmins(prisma, { emails: env.PLATFORM_ADMIN_EMAIL, password: env.PLATFORM_ADMIN_PASSWORD });
+
 await prisma.$disconnect();

@@ -22,6 +22,10 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  /** E-mails (separados por vírgula) dos administradores da plataforma. O seed marca/desmarca conforme esta lista. */
+  PLATFORM_ADMIN_EMAIL: z.string().optional(),
+  /** Senha inicial do administrador: só é usada para CRIAR a conta, nunca sobrescreve uma senha existente. */
+  PLATFORM_ADMIN_PASSWORD: z.string().optional(),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

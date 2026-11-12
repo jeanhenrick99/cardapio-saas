@@ -7,6 +7,8 @@ export interface Me {
   id: string;
   email: string;
   name: string;
+  /** Administrador da plataforma (suporte): acessa todos os restaurantes pela área /admin. */
+  isPlatformAdmin: boolean;
   restaurants: { id: string; name: string; slug: string; role: Role }[];
 }
 

@@ -39,6 +39,7 @@ export async function loadMe(userId: string) {
       id: true,
       email: true,
       name: true,
+      isPlatformAdmin: true,
       memberships: {
         select: { role: true, restaurant: { select: { id: true, name: true, slug: true } } },
         orderBy: { createdAt: 'asc' },

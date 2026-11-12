@@ -14,7 +14,7 @@ const ROLE_HINT: Record<Role, string> = {
 };
 const date = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-interface ShareLink {
+export interface ShareLink {
   title: string;
   description: string;
   url: string;
@@ -254,7 +254,7 @@ function InviteSheet({ slug, onClose, onCreated }: { slug: string; onClose: () =
 }
 
 /** Link gerado (convite ou nova senha): copiar ou enviar pelo WhatsApp. Só aparece agora; o banco guarda só o hash. */
-function ShareSheet({ link, onClose }: { link: ShareLink; onClose: () => void }) {
+export function ShareSheet({ link, onClose }: { link: ShareLink; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {

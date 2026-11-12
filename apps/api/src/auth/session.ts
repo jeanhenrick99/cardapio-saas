@@ -9,6 +9,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+  isPlatformAdmin: boolean;
 }
 
 export async function createSession(prisma: PrismaClient, userId: string, userAgent?: string) {
@@ -24,7 +25,7 @@ export async function createSession(prisma: PrismaClient, userId: string, userAg
 export async function findSessionUser(prisma: PrismaClient, token: string): Promise<AuthUser | null> {
   const session = await prisma.session.findUnique({
     where: { tokenHash: hashToken(token) },
-    include: { user: { select: { id: true, email: true, name: true } } },
+    include: { user: { select: { id: true, email: true, name: true, isPlatformAdmin: true } } },
   });
   if (!session) return null;
   if (session.expiresAt < new Date()) {

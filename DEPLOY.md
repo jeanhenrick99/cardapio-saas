@@ -120,7 +120,22 @@ npm run dev:agent
 - **API:** o Render também (`autoDeploy: true`); migrations novas são aplicadas na inicialização.
 - O **CI** do GitHub Actions roda os testes no mesmo push. Se ele ficar vermelho, corrija antes que o deploy chegue aos usuários.
 
+## Administrador da plataforma (suporte)
+
+O administrador acessa **/admin**: lista todos os restaurantes, cadastra clientes (gerando o link de acesso do dono) e entra na base de qualquer um em **modo suporte**.
+
+1. No Render, abra o serviço **cardapio-api** → **Environment** → **Add Environment Variable**:
+   - `PLATFORM_ADMIN_EMAIL`: o seu e-mail (vários, separados por vírgula)
+   - `PLATFORM_ADMIN_PASSWORD`: uma senha de 12 ou mais caracteres
+2. **Save Changes**. O Render reinicia a API e, na inicialização, cria a sua conta já como administrador.
+3. Entre em `/login` com esse e-mail e senha: você cai direto em `/admin`.
+4. Depois do primeiro login, você pode **apagar** `PLATFORM_ADMIN_PASSWORD` do Render: ela só serve para criar a conta e nunca sobrescreve uma senha existente.
+
+Quem define os administradores é a lista `PLATFORM_ADMIN_EMAIL`: tirar um e-mail dela remove o poder de administrador na próxima inicialização.
+
 ## Segurança e limites conhecidos
+
+- O **administrador da plataforma** enxerga e altera os dados de todos os restaurantes. Use uma senha forte e exclusiva; cada entrada na base de um cliente fica registrada.
 
 - A **conta de demonstração** (`demo@cardapio.dev` / `demo12345`) é pública de propósito, para quem visitar o portfólio. Qualquer pessoa pode editar o cardápio do restaurante demo. Para um restaurante real, crie outra conta pelo cadastro.
 - Segredos (`DATABASE_URL`) ficam **só** nos painéis do Render e da Vercel, nunca no repositório.

@@ -29,31 +29,35 @@ model Restaurant {
   /// Taxa de serviço sugerida no fechamento da conta (%). 0 = sem taxa.
   serviceFeePercent Int     @default(10)
 
-  orders        Order[]
-  printJobs     PrintJob[]
-  agents        Agent[]
-  pairingCodes  PairingCode[]
-  memberships   Membership[]
-  categories    Category[]
-  products      Product[]
-  images        Image[]
-  tabs          Tab[]
-  cashRegisters CashRegister[]
-  invites       Invite[]
+  orders          Order[]
+  printJobs       PrintJob[]
+  agents          Agent[]
+  pairingCodes    PairingCode[]
+  memberships     Membership[]
+  categories      Category[]
+  products        Product[]
+  images          Image[]
+  tabs            Tab[]
+  cashRegisters   CashRegister[]
+  invites         Invite[]
+  supportAccesses SupportAccess[]
 }
 
 model User {
-  id           String   @id @default(uuid())
+  id              String   @id @default(uuid())
   /// Sempre salvo em minúsculas.
-  email        String   @unique
-  name         String
+  email           String   @unique
+  name            String
   /// Formato: scrypt$N$r$p$salt$hash
-  passwordHash String
-  createdAt    DateTime @default(now())
+  passwordHash    String
+  createdAt       DateTime @default(now())
+  /// Administrador da plataforma (suporte): acessa todos os restaurantes. Definido pelo seed a partir de PLATFORM_ADMIN_EMAIL.
+  isPlatformAdmin Boolean  @default(false)
 
-  sessions       Session[]
-  memberships    Membership[]
-  passwordResets PasswordReset[]
+  sessions        Session[]
+  memberships     Membership[]
+  passwordResets  PasswordReset[]
+  supportAccesses SupportAccess[]
 }
 
 /// Sessão de login. Como nos agentes, guardamos só o hash do token.
@@ -415,4 +419,17 @@ model PasswordReset {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// Registro de cada vez que um administrador da plataforma entrou na base de um cliente.
+model SupportAccess {
+  id           String   @id @default(uuid())
+  userId       String
+  restaurantId String
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, createdAt])
 }

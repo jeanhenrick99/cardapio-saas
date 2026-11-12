@@ -46,6 +46,11 @@ export async function loadRestaurantFor(
     include: { restaurant: true },
   });
   if (!membership) {
+    // Administrador da plataforma (suporte): entra em qualquer restaurante com os poderes de dono.
+    if (user.isPlatformAdmin) {
+      const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
+      if (restaurant) return restaurant;
+    }
     await reply.code(404).send({ error: `Restaurante "${slug}" não encontrado` });
     return null;
   }

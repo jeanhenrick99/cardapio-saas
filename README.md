@@ -91,6 +91,16 @@ Abra **http://localhost:3000/login** e escolha uma conta de demonstração:
 | **Dono** | `demo@cardapio.dev` / `demo12345` | Retaguarda + PDV |
 | **Garçom** | `garcom@cardapio.dev` / `demo12345` | Só o PDV |
 
+São três níveis de acesso:
+
+| Nível | Quem é | O que pode |
+|---|---|---|
+| **Administrador da plataforma** | Quem opera o SaaS (definido por `PLATFORM_ADMIN_EMAIL`) | Área `/admin`: vê todos os restaurantes, cadastra clientes e entra na base de qualquer um em **modo suporte**, com os poderes de dono |
+| **Dono** | O cliente | Retaguarda e PDV do próprio restaurante; cadastra a equipe |
+| **Funcionário** | Equipe do cliente | Só o PDV |
+
+**Administração** (`/admin`): busca por nome, endereço ou e-mail do dono; **Novo restaurante** cadastra o cliente e gera o link para o dono criar a senha (e ele mesmo cadastra os funcionários depois); **Acessar retaguarda / PDV** entra na base do cliente com uma faixa "Modo suporte" e registra a entrada; **Link de dono** gera um novo acesso quando o cliente perde o dele. Para testar localmente, defina `PLATFORM_ADMIN_EMAIL` e `PLATFORM_ADMIN_PASSWORD` em `apps/api/.env` (veja o `.env.example`) e rode `npm run db:seed -w apps/api`.
+
 O sistema tem duas áreas, como nos sistemas de restaurante:
 
 **Retaguarda** (`/painel/<restaurante>`, só o dono): configurar e acompanhar o negócio. Menu lateral com busca (**Ctrl+K**) e seções recolhíveis (no celular vira gaveta), barra superior com o status da loja e o botão **Abrir PDV**.
@@ -244,6 +254,8 @@ curl -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/menu
 
 **O restaurante nunca fica sem dono.** Rebaixar ou remover um dono conta os donos com as linhas travadas (`FOR UPDATE`): dois donos rebaixando um ao outro ao mesmo tempo resultam em um aceito e um recusado, testado com requisições simultâneas.
 
+**Administrador sem "conta mestra" no código.** Quem é administrador é decidido por uma variável de ambiente, sincronizada na inicialização: entrar na lista dá o poder, sair tira. A senha inicial só cria a conta e nunca sobrescreve uma existente. O administrador não vira membro dos restaurantes: toda verificação de acesso passa por uma única função (`loadRestaurantFor`), que o deixa entrar como suporte; para qualquer outra pessoa, `/admin` e o restaurante dos outros respondem **404**. A conta de demonstração, que é pública, nunca é administradora. Cada entrada do suporte na base de um cliente fica registrada.
+
 **Revogação imediata.** Revogar um agente o desconecta na hora; ele para de tentar reconectar e orienta a parear de novo.
 
 **Fila persistente local.** Se o PC desligar ou a impressora ficar sem papel, nada se perde. Cada impressora tem sua linha na fila, com retentativas e backoff exponencial; uma impressora com problema não trava as outras.
@@ -313,6 +325,7 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 - [x] Cardápio web do cliente (mesa, retirada e delivery)
 - [x] Gerador de QR Code das mesas
 - [x] Equipe: convite por link, papéis, remoção de acesso e nova senha
+- [x] Administrador da plataforma: cadastro de restaurantes e acesso de suporte à base dos clientes
 - [x] Fotos dos produtos, logo e capa (enviadas pelo painel)
 - [ ] Taxa de entrega por bairro e horário de funcionamento
 - [x] Painel do restaurante: pedidos em tempo real, loja e impressoras

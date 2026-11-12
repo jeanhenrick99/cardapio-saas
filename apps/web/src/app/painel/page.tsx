@@ -5,6 +5,8 @@ import { getMe } from '@/lib/server-api';
 export default async function PanelIndex() {
   const me = await getMe();
   if (!me) redirect('/login');
+  // Administrador da plataforma: a entrada é a lista de todos os restaurantes.
+  if (me.isPlatformAdmin) redirect('/admin');
   const first = me.restaurants[0];
   if (!first) {
     return (
