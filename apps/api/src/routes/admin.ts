@@ -3,8 +3,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { requireUser } from './common';
-import { EmailSchema, RestaurantInputSchema } from './schemas';
-import { createInvite } from './team';
+import { EmailSchema, PasswordSchema, RestaurantInputSchema, UsernameSchema } from './schemas';
+import { createInvite, createUserWithLogin } from './team';
 
 const SlugParams = z.object({ slug: z.string() });
 
@@ -31,13 +31,14 @@ export async function adminRoutes(app: FastifyInstance) {
               { name: { contains: q, mode: 'insensitive' } },
               { slug: { contains: q.toLowerCase() } },
               { memberships: { some: { user: { email: { contains: q.toLowerCase() } } } } },
+              { memberships: { some: { user: { username: { contains: q.toLowerCase() } } } } },
             ],
           }
         : undefined,
       orderBy: { createdAt: 'desc' },
       take: 200,
       include: {
-        memberships: { where: { role: 'OWNER' }, select: { user: { select: { name: true, email: true } } }, orderBy: { createdAt: 'asc' } },
+        memberships: { where: { role: 'OWNER' }, select: { user: { select: { name: true, email: true, username: true } } }, orderBy: { createdAt: 'asc' } },
         invites: { where: { role: 'OWNER', acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } }, select: { email: true } },
         supportAccesses: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true, user: { select: { name: true } } } },
         _count: { select: { memberships: true, orders: true } },
@@ -65,24 +66,53 @@ export async function adminRoutes(app: FastifyInstance) {
     }));
   });
 
-  /** Cadastra o restaurante de um cliente e gera o link para o dono criar a senha. */
+  /**
+   * Cadastra o restaurante de um cliente com o login do dono. Duas formas:
+   * - `ownerUsername` + `ownerPassword`: o administrador define o usuário e a senha e passa ao cliente;
+   * - `ownerEmail`: gera um link para o próprio dono criar a senha.
+   */
   app.post('/admin/restaurants', async (request, reply) => {
-    const body = RestaurantInputSchema.extend({ ownerName: z.string().trim().min(2).max(100), ownerEmail: EmailSchema }).parse(request.body);
+    const body = RestaurantInputSchema.extend({
+      ownerName: z.string().trim().min(2).max(100),
+      ownerUsername: UsernameSchema.optional(),
+      ownerPassword: PasswordSchema.optional(),
+      ownerEmail: EmailSchema.optional(),
+    })
+      .refine((b) => (b.ownerUsername && b.ownerPassword) || b.ownerEmail, 'Informe o usuário e a senha do dono, ou o e-mail para enviar o link')
+      .parse(request.body);
+
+    if (body.ownerUsername && (await prisma.user.count({ where: { username: body.ownerUsername } })) > 0) {
+      return reply.code(409).send({ error: 'Este nome de usuário já está em uso. Escolha outro.' });
+    }
+    let restaurant;
     try {
-      const restaurant = await prisma.restaurant.create({ data: { name: body.name, slug: body.slug } });
-      const { invite, token } = await createInvite(restaurant.id, {
-        name: body.ownerName,
-        email: body.ownerEmail,
-        role: 'OWNER',
-        createdBy: request.user!.name,
-      });
-      return reply.code(201).send({ id: restaurant.id, name: restaurant.name, slug: restaurant.slug, owner: { name: invite.name, email: invite.email }, token, expiresAt: invite.expiresAt });
+      restaurant = await prisma.restaurant.create({ data: { name: body.name, slug: body.slug } });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         return reply.code(409).send({ error: 'Este endereço de restaurante já está em uso' });
       }
       throw err;
     }
+    const base = { id: restaurant.id, name: restaurant.name, slug: restaurant.slug };
+
+    if (body.ownerUsername && body.ownerPassword) {
+      const user = await createUserWithLogin({
+        name: body.ownerName,
+        username: body.ownerUsername,
+        password: body.ownerPassword,
+        restaurantId: restaurant.id,
+        role: 'OWNER',
+      });
+      if (!user) {
+        // Outro cadastro pegou o mesmo usuário no último instante: desfaz o restaurante recém-criado.
+        await prisma.restaurant.delete({ where: { id: restaurant.id } });
+        return reply.code(409).send({ error: 'Este nome de usuário já está em uso. Escolha outro.' });
+      }
+      return reply.code(201).send({ ...base, owner: { name: user.name, username: user.username } });
+    }
+
+    const { invite, token } = await createInvite(restaurant.id, { name: body.ownerName, email: body.ownerEmail!, role: 'OWNER', createdBy: request.user!.name });
+    return reply.code(201).send({ ...base, owner: { name: invite.name, email: invite.email }, token, expiresAt: invite.expiresAt });
   });
 
   /** Novo link de dono (o cliente perdeu o acesso, trocou de responsável ou o primeiro link venceu). */

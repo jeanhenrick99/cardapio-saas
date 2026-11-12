@@ -7,7 +7,8 @@ export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
 
 export interface AuthUser {
   id: string;
-  email: string;
+  email: string | null;
+  username: string | null;
   name: string;
   isPlatformAdmin: boolean;
 }
@@ -25,7 +26,7 @@ export async function createSession(prisma: PrismaClient, userId: string, userAg
 export async function findSessionUser(prisma: PrismaClient, token: string): Promise<AuthUser | null> {
   const session = await prisma.session.findUnique({
     where: { tokenHash: hashToken(token) },
-    include: { user: { select: { id: true, email: true, name: true, isPlatformAdmin: true } } },
+    include: { user: { select: { id: true, email: true, username: true, name: true, isPlatformAdmin: true } } },
   });
   if (!session) return null;
   if (session.expiresAt < new Date()) {

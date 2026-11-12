@@ -15,10 +15,14 @@ const SignupBody = z.object({
   restaurant: RestaurantInputSchema,
 });
 
-const LoginBody = z.object({
-  email: EmailSchema,
-  password: z.string().min(1).max(200),
-});
+/** `login` é o usuário ou o e-mail. (`email` continua aceito por compatibilidade.) */
+const LoginBody = z
+  .object({
+    login: z.string().trim().toLowerCase().min(1).max(255).optional(),
+    email: z.string().trim().toLowerCase().min(1).max(255).optional(),
+    password: z.string().min(1).max(200),
+  })
+  .transform((b) => ({ login: b.login ?? b.email ?? '', password: b.password }));
 
 export async function startSession(request: FastifyRequest, reply: FastifyReply, userId: string) {
   const { token, expiresAt } = await createSession(prisma, userId, request.headers['user-agent']);
@@ -38,6 +42,7 @@ export async function loadMe(userId: string) {
     select: {
       id: true,
       email: true,
+      username: true,
       name: true,
       isPlatformAdmin: true,
       memberships: {
@@ -77,10 +82,13 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post('/auth/login', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
     const body = LoginBody.parse(request.body);
-    const user = await prisma.user.findUnique({ where: { email: body.email } });
+    // Com "@" é e-mail; sem, é o nome de usuário cadastrado pelo dono.
+    const user = body.login.includes('@')
+      ? await prisma.user.findUnique({ where: { email: body.login } })
+      : await prisma.user.findUnique({ where: { username: body.login } });
     const valid = user ? await verifyPassword(body.password, user.passwordHash) : await verifyAgainstDummy(body.password);
-    // Mesma mensagem para e-mail inexistente e senha errada.
-    if (!user || !valid) return reply.code(401).send({ error: 'E-mail ou senha incorretos' });
+    // Mesma mensagem para usuário inexistente e senha errada.
+    if (!user || !valid) return reply.code(401).send({ error: 'Usuário ou senha incorretos' });
 
     const session = await startSession(request, reply, user.id);
     return { user: await loadMe(user.id), ...session };

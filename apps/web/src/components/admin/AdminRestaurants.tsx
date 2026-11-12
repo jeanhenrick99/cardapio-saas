@@ -6,6 +6,7 @@ import { api, ApiError } from '@/lib/client-api';
 import { timeAgo } from '@/lib/panel';
 import type { Me } from '@/lib/types';
 import { usePolling } from '@/lib/use-polling';
+import { PasswordField, suggestUsername, UsernameField } from '../panel/CredentialFields';
 import { ShareSheet, type ShareLink } from '../panel/TeamManager';
 import { inputClass, primaryButton, secondaryButton } from '../panel/styles';
 import { Brand } from '../ui/Brand';
@@ -18,7 +19,7 @@ interface AdminRestaurant {
   slug: string;
   createdAt: string;
   acceptingOrders: boolean;
-  owners: { name: string; email: string }[];
+  owners: { name: string; email: string | null; username: string | null }[];
   pendingOwnerInvites: string[];
   membersCount: number;
   ordersCount: number;
@@ -45,6 +46,7 @@ export function AdminRestaurants({ me }: { me: Me }) {
   const [newOwnerFor, setNewOwnerFor] = useState<AdminRestaurant | null>(null);
   const [share, setShare] = useState<ShareLink | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [entering, setEntering] = useState<string | null>(null);
 
   useEffect(() => {
@@ -99,12 +101,18 @@ export function AdminRestaurants({ me }: { me: Me }) {
         <label className="relative block max-w-md">
           <span className="sr-only">Buscar restaurante</span>
           <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-muted" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome, endereço ou e-mail do dono" className={`${inputClass} pl-10`} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome, endereço ou login do dono" className={`${inputClass} pl-10`} />
         </label>
 
         {(message || error) && (
           <p role="alert" className="rounded-xl bg-wine-deep px-4 py-3 text-sm text-red-200 ring-1 ring-wine-hover/60">
             {message ?? error}
+          </p>
+        )}
+
+        {notice && (
+          <p role="status" className="rounded-xl px-4 py-3 text-sm text-emerald-300 ring-1 ring-emerald-700/70">
+            {notice}
           </p>
         )}
 
@@ -127,7 +135,7 @@ export function AdminRestaurants({ me }: { me: Me }) {
                     {r.owners.length > 0 ? (
                       <>
                         <span className="text-muted">Dono: </span>
-                        {r.owners.map((o) => `${o.name} (${o.email})`).join(', ')}
+                        {r.owners.map((o) => `${o.name} (${o.username ?? o.email})`).join(', ')}
                       </>
                     ) : (
                       <span className="text-gold-soft">Sem dono ainda</span>
@@ -160,9 +168,9 @@ export function AdminRestaurants({ me }: { me: Me }) {
       {creating && (
         <RestaurantSheet
           onClose={() => setCreating(false)}
-          onDone={(link) => {
+          onDone={(_link, text) => {
             setCreating(false);
-            setShare(link);
+            setNotice(text ?? null);
             void refresh();
           }}
         />
@@ -173,7 +181,7 @@ export function AdminRestaurants({ me }: { me: Me }) {
           onClose={() => setNewOwnerFor(null)}
           onDone={(link) => {
             setNewOwnerFor(null);
-            setShare(link);
+            if (link) setShare(link);
             void refresh();
           }}
         />
@@ -194,7 +202,18 @@ const toSlug = (name: string) =>
     .slice(0, 50);
 
 /** Cadastro de um restaurante novo (com o dono) ou, com `restaurant`, só um novo link de dono. */
-function RestaurantSheet({ restaurant, onClose, onDone }: { restaurant?: AdminRestaurant; onClose: () => void; onDone: (link: ShareLink) => void }) {
+function RestaurantSheet({
+  restaurant,
+  onClose,
+  onDone,
+}: {
+  restaurant?: AdminRestaurant;
+  onClose: () => void;
+  onDone: (link: ShareLink | null, message?: string) => void;
+}) {
+  const [ownerUsername, setOwnerUsername] = useState('');
+  const [usernameEdited, setUsernameEdited] = useState(false);
+  const [ownerPassword, setOwnerPassword] = useState('');
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [slugEdited, setSlugEdited] = useState(false);
@@ -215,11 +234,11 @@ function RestaurantSheet({ restaurant, onClose, onDone }: { restaurant?: AdminRe
         });
         onDone(ownerLink(ownerName, restaurant.name, res.token, res.expiresAt));
       } else {
-        const res = await api<{ name: string; token: string; expiresAt: string }>('/admin/restaurants', {
+        const res = await api<{ name: string }>('/admin/restaurants', {
           method: 'POST',
-          body: { name, slug, ownerName, ownerEmail },
+          body: { name, slug, ownerName, ownerUsername, ownerPassword },
         });
-        onDone(ownerLink(ownerName, res.name, res.token, res.expiresAt));
+        onDone(null, `${res.name} cadastrado. Passe ao cliente o usuário "${ownerUsername}" e a senha que você definiu: ele entra como dono e cadastra a equipe.`);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Não foi possível salvar.');
@@ -234,7 +253,7 @@ function RestaurantSheet({ restaurant, onClose, onDone }: { restaurant?: AdminRe
       title={restaurant ? `Novo link de dono · ${restaurant.name}` : 'Novo restaurante'}
       footer={
         <button type="submit" form="restaurant-form" disabled={saving} className={`${primaryButton} w-full py-3`}>
-          {saving ? 'Salvando...' : restaurant ? 'Gerar link de dono' : 'Cadastrar e gerar link do dono'}
+          {saving ? 'Salvando...' : restaurant ? 'Gerar link de dono' : 'Cadastrar restaurante'}
         </button>
       }
     >
@@ -280,13 +299,39 @@ function RestaurantSheet({ restaurant, onClose, onDone }: { restaurant?: AdminRe
         {restaurant && <p className="text-sm text-muted">Use quando o cliente perdeu o acesso, trocou de responsável ou o primeiro link venceu.</p>}
         <label className="block">
           <span className="mb-1 block text-sm font-semibold">Nome do dono</span>
-          <input required minLength={2} maxLength={100} autoFocus={!!restaurant} value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className={inputClass} />
+          <input
+            required
+            minLength={2}
+            maxLength={100}
+            autoFocus={!!restaurant}
+            value={ownerName}
+            onChange={(e) => {
+              setOwnerName(e.target.value);
+              if (!usernameEdited) setOwnerUsername(suggestUsername(e.target.value));
+            }}
+            className={inputClass}
+          />
         </label>
-        <label className="block">
-          <span className="mb-1 block text-sm font-semibold">E-mail do dono</span>
-          <input type="email" required value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} className={inputClass} />
-          <span className="mt-1 block text-xs text-muted">É o login do cliente. Ele cria a senha pelo link e depois cadastra a própria equipe.</span>
-        </label>
+        {restaurant ? (
+          <label className="block">
+            <span className="mb-1 block text-sm font-semibold">E-mail do dono</span>
+            <input type="email" required value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} className={inputClass} />
+            <span className="mt-1 block text-xs text-muted">A pessoa cria a própria senha pelo link e entra com este e-mail.</span>
+          </label>
+        ) : (
+          <>
+            <UsernameField
+              label="Usuário do dono"
+              hint="É o login que você passa ao cliente. Ele entra como dono e cadastra a própria equipe."
+              value={ownerUsername}
+              onChange={(v) => {
+                setUsernameEdited(true);
+                setOwnerUsername(v);
+              }}
+            />
+            <PasswordField label="Senha do dono" value={ownerPassword} onChange={setOwnerPassword} />
+          </>
+        )}
         {error && (
           <p role="alert" className="rounded-xl bg-wine-deep px-3 py-2 text-sm text-red-200 ring-1 ring-wine-hover/60">
             {error}

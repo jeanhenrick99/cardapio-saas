@@ -96,10 +96,12 @@ São três níveis de acesso:
 | Nível | Quem é | O que pode |
 |---|---|---|
 | **Administrador da plataforma** | Quem opera o SaaS (definido por `PLATFORM_ADMIN_EMAIL`) | Área `/admin`: vê todos os restaurantes, cadastra clientes e entra na base de qualquer um em **modo suporte**, com os poderes de dono |
-| **Dono** | O cliente | Retaguarda e PDV do próprio restaurante; cadastra a equipe |
-| **Funcionário** | Equipe do cliente | Só o PDV |
+| **Dono** | O cliente (recebe o usuário e a senha do administrador) | Retaguarda e PDV do próprio restaurante; cadastra o usuário e a senha de cada funcionário |
+| **Funcionário** | Equipe do cliente (usuário e senha definidos pelo dono) | Só o PDV |
 
-**Administração** (`/admin`): busca por nome, endereço ou e-mail do dono; **Novo restaurante** cadastra o cliente e gera o link para o dono criar a senha (e ele mesmo cadastra os funcionários depois); **Acessar retaguarda / PDV** entra na base do cliente com uma faixa "Modo suporte" e registra a entrada; **Link de dono** gera um novo acesso quando o cliente perde o dele. Para testar localmente, defina `PLATFORM_ADMIN_EMAIL` e `PLATFORM_ADMIN_PASSWORD` em `apps/api/.env` (veja o `.env.example`) e rode `npm run db:seed -w apps/api`.
+O login aceita **usuário** (ex.: `joao.garcom`) ou e-mail.
+
+**Administração** (`/admin`): busca por nome, endereço ou e-mail do dono; **Novo restaurante** cadastra o cliente já com o **usuário e a senha do dono**, que o administrador passa a ele (e o dono cadastra os funcionários depois); **Acessar retaguarda / PDV** entra na base do cliente com uma faixa "Modo suporte" e registra a entrada; **Link de dono** gera um novo acesso quando o cliente perde o dele. Para testar localmente, defina `PLATFORM_ADMIN_EMAIL` e `PLATFORM_ADMIN_PASSWORD` em `apps/api/.env` (veja o `.env.example`) e rode `npm run db:seed -w apps/api`.
 
 O sistema tem duas áreas, como nos sistemas de restaurante:
 
@@ -110,7 +112,7 @@ O sistema tem duas áreas, como nos sistemas de restaurante:
 - **Histórico de pedidos**: os pedidos chegam **na hora** (WebSocket), com destaque para os novos, campainha opcional, contador no título da aba e o status da impressão de cada um
 - **Cardápio**: categorias (criar, renomear, reordenar, ocultar), produtos com preço, setor de impressão, foto, destaque e complementos (grupos com mínimo e máximo), e um botão rápido de esgotado/disponível
 - **Loja**: abrir/fechar para pedidos, tempos de retirada e entrega, pedido mínimo do delivery, quantidade de mesas, taxa de serviço, logo e capa
-- **Equipe**: o dono convida funcionários (ou outro dono) por **link de convite**, que pode ser enviado pelo WhatsApp: a pessoa abre, cria a própria senha e já entra. Se o e-mail já tem conta no Bistroo, ela confirma com a senha e ganha o restaurante novo. Também dá para trocar o papel, remover o acesso e gerar um link de **nova senha** para um funcionário
+- **Equipe**: o dono **cadastra o usuário e a senha** de cada funcionário (o usuário é sugerido a partir do nome) e é com eles que a pessoa entra. Também troca a senha de um funcionário (as sessões abertas dele caem), muda o papel e remove o acesso. Como alternativa, dá para convidar por **link**: a pessoa cria a própria senha e entra com o e-mail
 - **QR Codes das mesas**: gera uma folha para imprimir (A4) com um QR Code por mesa, cada um levando a `/r/<restaurante>?mesa=N`, mais um QR geral para retirada/delivery. Cada QR também pode ser baixado em SVG. Avisa quando o endereço é `localhost` (não abre no celular)
 - **Impressoras**: computadores conectados (online/offline), geração do código de pareamento e revogação
 
@@ -253,6 +255,8 @@ curl -H "authorization: Bearer $TOKEN" localhost:8080/restaurants/demo/menu
 **Convites e nova senha por link, sem e-mail.** O link leva um token aleatório; o banco guarda só o hash (como sessões e pareamento). O convite vale 7 dias e o link de senha 24 h, os dois de uso único e consumidos de forma atômica (dois cliques em "Aceitar" criam uma conta só). Convidar de novo o mesmo e-mail invalida o link anterior. A página do link não repassa o endereço para outros sites (`Referrer-Policy: no-referrer`). Trocar a senha encerra todas as sessões abertas. Por segurança, o dono só gera nova senha para funcionários que participam apenas do restaurante dele.
 
 **O restaurante nunca fica sem dono.** Rebaixar ou remover um dono conta os donos com as linhas travadas (`FOR UPDATE`): dois donos rebaixando um ao outro ao mesmo tempo resultam em um aceito e um recusado, testado com requisições simultâneas.
+
+**Usuário e senha definidos por quem cadastra.** O administrador define o login do dono e o dono define o dos funcionários; o e-mail é opcional. O nome de usuário é único na plataforma, sempre em minúsculas, e nunca contém "@", então o login sabe se recebeu um usuário ou um e-mail. A senha continua guardada só como hash scrypt: quem cadastrou conhece a senha que digitou, mas ela não fica legível no sistema, e trocá-la encerra as sessões abertas da pessoa. O dono só troca a senha de funcionários que participam apenas do restaurante dele; o administrador, em modo suporte, também a do dono que esqueceu a sua.
 
 **Administrador sem "conta mestra" no código.** Quem é administrador é decidido por uma variável de ambiente, sincronizada na inicialização: entrar na lista dá o poder, sair tira. A senha inicial só cria a conta e nunca sobrescreve uma existente. O administrador não vira membro dos restaurantes: toda verificação de acesso passa por uma única função (`loadRestaurantFor`), que o deixa entrar como suporte; para qualquer outra pessoa, `/admin` e o restaurante dos outros respondem **404**. A conta de demonstração, que é pública, nunca é administradora. Cada entrada do suporte na base de um cliente fica registrada.
 

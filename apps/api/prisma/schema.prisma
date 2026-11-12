@@ -46,7 +46,10 @@ model Restaurant {
 model User {
   id              String   @id @default(uuid())
   /// Sempre salvo em minúsculas.
-  email           String   @unique
+  /// Opcional: funcionário cadastrado pelo dono entra só com o usuário.
+  email           String?  @unique
+  /// Nome de usuário para o login (minúsculas), definido por quem cadastra. Único na plataforma.
+  username        String?  @unique
   name            String
   /// Formato: scrypt$N$r$p$salt$hash
   passwordHash    String

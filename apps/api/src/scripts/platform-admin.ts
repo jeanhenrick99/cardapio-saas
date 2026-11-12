@@ -19,7 +19,7 @@ export async function syncPlatformAdmins(
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
 
-  const demoted = await prisma.user.updateMany({ where: { isPlatformAdmin: true, email: { notIn: emails } }, data: { isPlatformAdmin: false } });
+  const demoted = await prisma.user.updateMany({ where: { isPlatformAdmin: true, OR: [{ email: null }, { email: { notIn: emails } }] }, data: { isPlatformAdmin: false } });
   if (demoted.count) log(`✔ ${demoted.count} usuário(s) deixaram de ser administradores da plataforma`);
 
   for (const email of emails) {

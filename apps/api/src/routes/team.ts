@@ -6,7 +6,7 @@ import { generateLinkToken, hashToken } from '../auth/tokens';
 import { prisma } from '../db';
 import { loadMe, startSession } from './auth';
 import { loadRestaurantFor, requireUser } from './common';
-import { EmailSchema, PasswordSchema } from './schemas';
+import { EmailSchema, PasswordSchema, UsernameSchema } from './schemas';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const RESET_TTL_MS = 24 * 60 * 60 * 1000;
@@ -22,6 +22,33 @@ const INVALID_RESET = 'Link inválido, expirado ou já usado. Peça um novo ao r
 /** Convite ainda utilizável (não aceito, não revogado, dentro do prazo). */
 const usableInvite = (tokenHash: string) => ({ tokenHash, acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } });
 const usableReset = (tokenHash: string) => ({ tokenHash, usedAt: null, expiresAt: { gt: new Date() } });
+
+/**
+ * Quem pode trocar a senha de um membro: o dono, só de funcionários; o administrador da
+ * plataforma (suporte), também de donos. Nos dois casos, só de quem participa apenas deste
+ * restaurante, para ninguém tomar a conta de uma pessoa que também está em outro.
+ */
+function canSetPassword(actor: { isPlatformAdmin: boolean }, targetRole: Role, onlyThisRestaurant: boolean): boolean {
+  return onlyThisRestaurant && (targetRole === 'STAFF' || actor.isPlatformAdmin);
+}
+
+/** Cria a conta com usuário e senha e já a liga ao restaurante. Devolve null se o usuário já existe. */
+export async function createUserWithLogin(input: { name: string; username: string; password: string; restaurantId: string; role: Role }) {
+  const passwordHash = await hashPassword(input.password);
+  try {
+    return await prisma.user.create({
+      data: {
+        name: input.name,
+        username: input.username,
+        passwordHash,
+        memberships: { create: { restaurantId: input.restaurantId, role: input.role } },
+      },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return null;
+    throw err;
+  }
+}
 
 /** Cria o convite e devolve o token (mostrado uma vez só). Um convite novo para o mesmo e-mail invalida os anteriores. */
 export async function createInvite(restaurantId: string, input: { name: string; email: string; role: Role; createdBy: string }) {
@@ -60,7 +87,7 @@ export async function teamRoutes(app: FastifyInstance) {
       const [members, invites] = await Promise.all([
         prisma.membership.findMany({
           where: { restaurantId: restaurant.id },
-          include: { user: { select: { id: true, name: true, email: true, _count: { select: { memberships: true } } } } },
+          include: { user: { select: { id: true, name: true, email: true, username: true, _count: { select: { memberships: true } } } } },
           orderBy: { createdAt: 'asc' },
         }),
         prisma.invite.findMany({
@@ -73,13 +100,49 @@ export async function teamRoutes(app: FastifyInstance) {
           userId: m.user.id,
           name: m.user.name,
           email: m.user.email,
+          username: m.user.username,
           role: m.role,
           since: m.createdAt,
           isYou: m.user.id === request.user!.id,
-          canResetPassword: m.role === 'STAFF' && m.user._count.memberships === 1,
+          canResetPassword: canSetPassword(request.user!, m.role, m.user._count.memberships === 1),
         })),
         invites: invites.map((i) => ({ id: i.id, name: i.name, email: i.email, role: i.role, expiresAt: i.expiresAt, createdBy: i.createdBy })),
       };
+    });
+
+    /**
+     * O dono cadastra o funcionário já com usuário e senha (é com eles que a pessoa entra).
+     * O usuário é único na plataforma; a senha pode ser trocada depois pelo dono.
+     */
+    owner.post('/restaurants/:slug/members', async (request, reply) => {
+      const { slug } = SlugParams.parse(request.params);
+      const restaurant = await loadRestaurantFor(request, reply, slug, ['OWNER']);
+      if (!restaurant) return;
+      const body = z
+        .object({ name: z.string().trim().min(2).max(100), username: UsernameSchema, password: PasswordSchema, role: RoleSchema.default('STAFF') })
+        .parse(request.body);
+      const user = await createUserWithLogin({ name: body.name, username: body.username, password: body.password, restaurantId: restaurant.id, role: body.role });
+      if (!user) return reply.code(409).send({ error: 'Este nome de usuário já está em uso. Escolha outro.' });
+      return reply.code(201).send({ userId: user.id, name: user.name, username: user.username, role: body.role });
+    });
+
+    /** O dono define uma senha nova para o funcionário; as sessões abertas dele são encerradas. */
+    owner.put('/restaurants/:slug/members/:userId/password', async (request, reply) => {
+      const { slug, userId } = MemberParams.parse(request.params);
+      const restaurant = await loadRestaurantFor(request, reply, slug, ['OWNER']);
+      if (!restaurant) return;
+      const { password } = z.object({ password: PasswordSchema }).parse(request.body);
+      const member = await prisma.membership.findUnique({ where: { userId_restaurantId: { userId, restaurantId: restaurant.id } } });
+      if (!member) return reply.code(404).send({ error: 'Membro não encontrado' });
+      if (!canSetPassword(request.user!, member.role, await onlyHere(userId, restaurant.id))) {
+        return reply.code(403).send({ error: 'Só dá para trocar a senha de funcionários que participam apenas deste restaurante.' });
+      }
+      const passwordHash = await hashPassword(password);
+      await prisma.$transaction([
+        prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
+        prisma.session.deleteMany({ where: { userId } }),
+      ]);
+      return reply.code(204).send();
     });
 
     owner.post('/restaurants/:slug/invites', async (request, reply) => {
@@ -138,7 +201,7 @@ export async function teamRoutes(app: FastifyInstance) {
       if (!restaurant) return;
       const member = await prisma.membership.findUnique({ where: { userId_restaurantId: { userId, restaurantId: restaurant.id } } });
       if (!member) return reply.code(404).send({ error: 'Membro não encontrado' });
-      if (member.role !== 'STAFF' || !(await onlyHere(userId, restaurant.id))) {
+      if (!canSetPassword(request.user!, member.role, await onlyHere(userId, restaurant.id))) {
         return reply.code(403).send({ error: 'Só dá para redefinir a senha de funcionários que participam apenas deste restaurante.' });
       }
       const token = generateLinkToken('rst');

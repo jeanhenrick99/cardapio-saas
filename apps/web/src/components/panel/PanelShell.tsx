@@ -300,7 +300,7 @@ function ShellFrame({ me, slug, restaurantName, role, children }: Props) {
           </span>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium">{me.name}</div>
-            <div className="truncate text-xs text-muted">{me.email}</div>
+            <div className="truncate text-xs text-muted">{me.username ?? me.email}</div>
           </div>
           <button onClick={logout} aria-label="Sair" title="Sair" className="rounded-lg p-1.5 text-muted hover:bg-surface-2 hover:text-red-300">
             <LogoutIcon className="h-5 w-5" />

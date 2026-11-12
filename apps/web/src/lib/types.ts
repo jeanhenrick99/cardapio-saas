@@ -5,7 +5,9 @@ export type Role = 'OWNER' | 'STAFF';
 
 export interface Me {
   id: string;
-  email: string;
+  /** Quem foi cadastrado pelo dono entra só com o usuário (sem e-mail). */
+  email: string | null;
+  username: string | null;
   name: string;
   /** Administrador da plataforma (suporte): acessa todos os restaurantes pela área /admin. */
   isPlatformAdmin: boolean;
@@ -134,7 +136,8 @@ export interface SalesReportResponse extends SalesReport {
 export interface TeamMember {
   userId: string;
   name: string;
-  email: string;
+  email: string | null;
+  username: string | null;
   role: Role;
   since: string;
   isYou: boolean;

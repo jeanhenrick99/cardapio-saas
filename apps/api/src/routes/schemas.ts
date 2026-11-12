@@ -13,6 +13,12 @@ export const RestaurantInputSchema = z.object({
 });
 
 export const EmailSchema = z.string().trim().toLowerCase().email('E-mail inválido').max(255);
+/** Nome de usuário do login: 3 a 30 caracteres, letras minúsculas, números, ponto, hífen e sublinhado. */
+export const UsernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9](?:[a-z0-9._-]{1,28})[a-z0-9]$/, 'Use de 3 a 30 letras minúsculas, números, ponto, hífen ou sublinhado');
 export const PasswordSchema = z.string().min(8, 'A senha precisa de pelo menos 8 caracteres').max(200);
 
 /** Foto enviada (/api/images/<id>) ou link http(s) externo. */

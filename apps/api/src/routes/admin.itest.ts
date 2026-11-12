@@ -47,7 +47,7 @@ describe('área do administrador', () => {
     const byEmail = (await app.inject({ url: `/admin/restaurants?q=${encodeURIComponent(client.email)}`, headers: auth(admin.token) })).json();
     assert.equal(byEmail.length, 1);
     assert.equal(byEmail[0].slug, client.slug);
-    assert.deepEqual(byEmail[0].owners, [{ name: client.name, email: client.email }]);
+    assert.deepEqual(byEmail[0].owners, [{ name: client.name, email: client.email, username: null }]);
     const bySlug = (await app.inject({ url: `/admin/restaurants?q=${client.slug}`, headers: auth(admin.token) })).json();
     assert.equal(bySlug[0].slug, client.slug);
   });
