@@ -84,7 +84,7 @@ Faça na ordem abaixo: cada etapa usa o endereço gerado na anterior. Tempo tota
 |---|---|
 | Abrir `https://SEU-SITE.vercel.app/r/demo?mesa=7` no **celular** | Cardápio do Restaurante Demo, com o selo "Mesa 7" |
 | Fazer um pedido | Tela "Pedido #… enviado!" |
-| `https://SEU-SITE.vercel.app/login` → **Entrar como demonstração** | Painel abre; o pedido aparece em **Pedidos** |
+| `https://SEU-SITE.vercel.app` → **Entrar como dono** | Painel abre; o pedido aparece em **Pedidos** |
 | Painel → **QR Codes das mesas** | QR Codes com o endereço da Vercel; escaneie com o celular |
 
 Depois, coloque o link no topo do [README](README.md) (seção "Demo ao vivo").
@@ -128,7 +128,7 @@ O administrador acessa **/admin**: lista todos os restaurantes, cadastra cliente
    - `PLATFORM_ADMIN_EMAIL`: o seu e-mail (vários, separados por vírgula)
    - `PLATFORM_ADMIN_PASSWORD`: uma senha de 12 ou mais caracteres
 2. **Save Changes**. O Render reinicia a API e, na inicialização, cria a sua conta já como administrador.
-3. Entre em `/login` com esse e-mail e senha: você cai direto em `/admin`.
+3. Entre na página inicial do site com esse e-mail e senha: você cai direto em `/admin`.
 4. Depois do primeiro login, você pode **apagar** `PLATFORM_ADMIN_PASSWORD` do Render: ela só serve para criar a conta e nunca sobrescreve uma senha existente.
 
 Quem define os administradores é a lista `PLATFORM_ADMIN_EMAIL`: tirar um e-mail dela remove o poder de administrador na próxima inicialização.

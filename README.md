@@ -11,7 +11,7 @@
 | | Link |
 |---|---|
 | 📱 Cardápio do cliente (mesa 7) | **https://bistroo-menu-chi.vercel.app/r/demo?mesa=7** |
-| 🧑‍🍳 Retaguarda e PDV | **https://bistroo-menu-chi.vercel.app/login** → *Entrar como dono* ou *Entrar como garçom* |
+| 🧑‍🍳 Retaguarda e PDV | **https://bistroo-menu-chi.vercel.app** (a página inicial é o login) → *Entrar como dono* ou *Entrar como garçom* |
 
 > O primeiro acesso pode levar ~1 minuto: a API roda no plano gratuito do Render e "dorme" sem uso.
 > Hospedagem: Vercel (site) + Render (API) + Neon (PostgreSQL). Veja o [guia de deploy](DEPLOY.md).
@@ -84,7 +84,7 @@ Abra **http://localhost:3000/r/demo?mesa=7** e faça um pedido como cliente da m
 
 ### Retaguarda e PDV
 
-Abra **http://localhost:3000/login** e escolha uma conta de demonstração:
+Abra **http://localhost:3000** (a página inicial é a tela de login do sistema) e escolha uma conta de demonstração:
 
 | Conta | E-mail / senha | O que vê |
 |---|---|---|
