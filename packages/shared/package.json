@@ -1,5 +1,6 @@
 {
   "name": "@cardapio/shared",
+  "description": "Tipos, validação e regras de negócio compartilhadas entre a API, o site e o agente",
   "version": "0.1.0",
   "private": true,
   "type": "module",

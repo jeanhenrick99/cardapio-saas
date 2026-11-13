@@ -1,5 +1,6 @@
 {
   "name": "cardapio-saas",
+  "description": "Bistroo: sistema para restaurantes com cardápio digital, PDV, retaguarda e impressão automática na cozinha",
   "private": true,
   "type": "module",
   "workspaces": [

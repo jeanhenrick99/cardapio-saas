@@ -2,21 +2,76 @@
 
 [![CI](https://github.com/jeanhenrick99/cardapio-saas/actions/workflows/ci.yml/badge.svg)](https://github.com/jeanhenrick99/cardapio-saas/actions/workflows/ci.yml)
 
-**Bistroo** é uma plataforma de cardápio digital e pedidos para restaurantes, com **impressão automática na cozinha** via um agente local que fala ESC/POS direto com as impressoras térmicas.
+**Sistema para restaurantes, do pedido no celular à impressão na cozinha.** O cliente pede pelo QR Code da mesa, a equipe opera mesas, comandas, delivery e caixa num PDV em tempo real, e cada pedido sai impresso sozinho na térmica da cozinha por um agente local que fala ESC/POS.
 
-> 🚧 Em desenvolvimento. Já funciona: **cardápio web para o cliente pedir pelo celular** (mesa, retirada ou delivery), **retaguarda** (cardápio, loja, impressoras, QR Codes) e **PDV** separados (mesas e comandas com conta aberta e fechamento, lançamento de pedidos, Kanban de delivery em tempo real e **caixa** com sangria, suprimento e conferência), **relatórios de vendas**, API multi-restaurante com PostgreSQL, **cardápio com complementos** (ex.: "escolha até 2 sabores"), **pedido público com preço calculado no servidor**, **login com papéis (dono/funcionário)**, **pareamento do agente por código** e impressão com fila persistente, reconexão automática e garantia de não imprimir duas vezes.
+Projeto de portfólio, feito de ponta a ponta: três aplicações em TypeScript (site, API e agente de impressão), PostgreSQL, WebSocket, 262 testes automatizados e deploy contínuo.
 
-## Demo ao vivo
+**[▶ Abrir a demonstração](https://bistroo-menu-chi.vercel.app)** · entre com *Entrar como dono* ou *Entrar como garçom* · [cardápio do cliente (mesa 7)](https://bistroo-menu-chi.vercel.app/r/demo?mesa=7)
 
-| | Link |
+> O primeiro acesso pode levar cerca de 1 minuto: a API roda no plano gratuito do Render e "dorme" sem uso.
+
+## Telas
+
+| PDV: mesas e comandas | PDV: conta da mesa |
 |---|---|
-| 📱 Cardápio do cliente (mesa 7) | **https://bistroo-menu-chi.vercel.app/r/demo?mesa=7** |
-| 🧑‍🍳 Retaguarda e PDV | **https://bistroo-menu-chi.vercel.app** (a página inicial é o login) → *Entrar como dono* ou *Entrar como garçom* |
+| ![Grade de mesas com as ocupadas em destaque e o consumo de cada uma](docs/screenshots/pdv-mesas.jpg) | ![Conta da mesa 3 com o catálogo, os lançamentos e os botões Transferir e Fechar conta](docs/screenshots/pdv-conta.jpg) |
 
-> O primeiro acesso pode levar ~1 minuto: a API roda no plano gratuito do Render e "dorme" sem uso.
-> Hospedagem: Vercel (site) + Render (API) + Neon (PostgreSQL). Veja o [guia de deploy](DEPLOY.md).
+| PDV: delivery e balcão (Kanban) | PDV: caixa |
+|---|---|
+| ![Quadro Kanban com pedidos em Recebidos, Em preparo, Prontos e Saiu para entrega](docs/screenshots/pdv-delivery.jpg) | ![Caixa aberto com vendas por forma de pagamento e dinheiro esperado na gaveta](docs/screenshots/pdv-caixa.jpg) |
 
-## Como funciona
+| Retaguarda: relatórios | Entrada do sistema |
+|---|---|
+| ![Relatório de vendas com faturamento, ticket médio e gráfico por dia](docs/screenshots/relatorios.jpg) | ![Tela de login com usuário e senha e as contas de demonstração](docs/screenshots/login.jpg) |
+
+<p align="center">
+  <img src="docs/screenshots/cardapio-celular.jpg" alt="Cardápio do cliente no celular, aberto pelo QR Code da mesa 7" width="300">
+  <br><em>Cardápio do cliente no celular, aberto pelo QR Code da mesa</em>
+</p>
+
+## O que o sistema faz
+
+| Área | Quem usa | Principais recursos |
+|---|---|---|
+| **Cardápio do cliente** | Cliente, sem login | Pedido pelo celular para mesa (QR Code), retirada ou delivery; complementos com mínimo e máximo ("escolha até 2 sabores"); carrinho que sobrevive a recarregar a página |
+| **PDV** | Dono e funcionários | Mesas e comandas com conta aberta; conta dividida em várias formas de pagamento; transferência entre mesas; Kanban de delivery e balcão; caixa com sangria, suprimento e conferência; marcar produto como esgotado |
+| **Retaguarda** | Dono | Cardápio com fotos; loja (aberta ou fechada, tempos de preparo, mesas, taxa de serviço); relatórios de vendas; equipe com usuário e senha; impressoras; QR Codes das mesas |
+| **Administração** | Quem opera o SaaS | Cadastro de restaurantes e do login de cada dono; acesso à base de qualquer cliente em modo suporte |
+| **Agente de impressão** | PC do restaurante | Recebe os pedidos por WebSocket e imprime na térmica por setor (cozinha, bar, caixa), com fila local e sem imprimir duas vezes |
+
+## Arquitetura
+
+```mermaid
+flowchart LR
+  subgraph Navegador
+    C["Cardápio do cliente<br/>(celular, QR Code)"]
+    P["PDV e retaguarda<br/>(equipe e dono)"]
+  end
+  subgraph Vercel
+    W["apps/web<br/>Next.js 16 · React 19"]
+  end
+  subgraph Render
+    A["apps/api<br/>Fastify · Prisma"]
+  end
+  DB[("PostgreSQL<br/>Neon")]
+  subgraph Restaurante
+    G["apps/print-agent<br/>fila SQLite · ESC/POS"]
+    I["Impressoras térmicas<br/>cozinha · bar · caixa"]
+  end
+  C --> W
+  P --> W
+  W -->|"/api (mesmo domínio)"| A
+  P <-.->|"WebSocket: avisos ao vivo"| A
+  A --> DB
+  A <-->|"WebSocket: print_job e ack"| G
+  G --> I
+```
+
+- **Site e API no mesmo endereço.** O navegador chama `/api/*` e o Next repassa para a API, então o cookie de sessão funciona sem CORS.
+- **Tempo real por sinais.** A API avisa o PDV por WebSocket que algo mudou e o PDV recarrega os dados pela API; nenhum dado de pedido trafega no canal ao vivo.
+- **O agente liga para fora.** O navegador não imprime em silêncio numa térmica e a nuvem não enxerga a rede do restaurante. O agente roda no PC do restaurante e abre uma conexão de saída, que funciona atrás de qualquer roteador.
+
+O caminho de um pedido até o papel:
 
 ```
 [Cliente pede no celular]
@@ -33,17 +88,27 @@
                                                          🖨️ Cozinha        🖨️ Bar        🖨️ Caixa
 ```
 
-O navegador não consegue imprimir em silêncio numa térmica, e a nuvem não enxerga a rede local do restaurante. Por isso um **agente** roda no PC do restaurante, mantém uma conexão WebSocket de saída com o servidor (funciona atrás de qualquer roteador/NAT) e conversa com as impressoras.
+## Destaques técnicos
 
-## Estrutura
+O detalhe de cada decisão está em [Decisões técnicas](#decisões-técnicas). Os pontos que mais valem a leitura:
+
+- **Concorrência tratada no banco.** Uma conta aberta por mesa e um caixa aberto por restaurante são garantidos por índices únicos parciais; fechar, lançar e transferir usam `SELECT ... FOR UPDATE` / `FOR SHARE`. Os testes disparam as corridas de verdade (6 lançamentos simultâneos, transferências cruzadas, dois donos se rebaixando).
+- **Impressão sem perda e sem duplicidade.** Entrega *at-least-once* com impressão *exactly-once*: o job nasce na mesma transação do pedido, o agente grava no SQLite antes de imprimir e ignora `jobId` repetido.
+- **O cliente nunca define o preço.** O carrinho envia só ids; o servidor recalcula tudo e valida as regras dos complementos.
+- **Regras de negócio em funções puras.** Preço, etapas do pedido, fechamento de conta, caixa e relatórios ficam em `packages/shared`, usadas pela API e pela interface e testadas sem banco.
+- **Segurança por construção.** Senhas com scrypt, sessões e tokens guardados só como hash, multi-restaurante com 404 para quem não é membro, e administrador definido por variável de ambiente (sem conta mestra no código).
+
+## Stack e estrutura
+
+TypeScript estrito em tudo · **Next.js 16**, React 19 e Tailwind CSS 4 · **Fastify 5**, Prisma 6 e **PostgreSQL 17** · WebSocket · Zod · `node:test` · GitHub Actions · Vercel, Render e Neon ([guia de deploy](DEPLOY.md))
 
 ```
 apps/
-  web/           Cardápio do cliente e painel do restaurante: Next.js 16, React 19 e Tailwind CSS 4
-  api/           API: Fastify, Prisma, PostgreSQL e o hub WebSocket dos agentes
-  print-agent/   Agente de impressão (Node + TypeScript)
+  web/           Cardápio do cliente, PDV, retaguarda e administração
+  api/           API REST, hub WebSocket dos agentes e do painel ao vivo
+  print-agent/   Agente de impressão: fila SQLite, ESC/POS escrito à mão
 packages/
-  shared/        Tipos do pedido e do protocolo, validados com Zod
+  shared/        Tipos, validação (Zod) e regras de negócio puras
 ```
 
 ## Rodando
@@ -180,7 +245,7 @@ A sessão vai num cookie `httpOnly` (navegador) ou no header `Authorization: Bea
 |---|---|---|---|
 | `GET` | `/health` | público | Status da API e do banco |
 | `POST` | `/auth/signup` | público | Cadastra o dono e o primeiro restaurante, já logado |
-| `POST` | `/auth/login` | público | Login por e-mail e senha (com limite de tentativas) |
+| `POST` | `/auth/login` | público | Login por usuário ou e-mail e senha (com limite de tentativas) |
 | `POST` | `/auth/logout` | logado | Encerra a sessão |
 | `GET` | `/auth/me` | logado | Usuário e restaurantes dos quais é membro |
 | `POST` | `/restaurants` | logado | Cria mais um restaurante (o usuário vira dono) |
@@ -190,7 +255,18 @@ A sessão vai num cookie `httpOnly` (navegador) ou no header `Authorization: Bea
 | `POST` / `PATCH` / `DELETE` | `/restaurants/:slug/categories[/:id]` | dono | Gerencia categorias |
 | `POST` / `PUT` / `DELETE` | `/restaurants/:slug/products[/:id]` | dono | Gerencia produtos e seus complementos |
 | `PATCH` | `/restaurants/:slug/products/:id/availability` | membro | Marca como esgotado ou disponível |
-| `POST` | `/restaurants/:slug/orders` | membro | Pedido lançado pela equipe (balcão, telefone), com preços do cardápio |
+| `POST` | `/restaurants/:slug/orders` | membro | Pedido lançado pela equipe (mesa, comanda, balcão, telefone), com preços do cardápio |
+| `PATCH` | `/restaurants/:slug/orders/:id/status` | membro | Avança, volta ou cancela a etapa do pedido (Kanban) |
+| `GET` | `/restaurants/:slug/tabs` | membro | Mesas e comandas abertas e as fechadas nas últimas 12 h |
+| `POST` | `/restaurants/:slug/tabs/:id/close` | membro | Fecha a conta com taxa, desconto e um ou mais pagamentos |
+| `POST` | `/restaurants/:slug/tabs/:id/transfer` | membro | Transfere a conta ou alguns lançamentos para outra mesa/comanda |
+| `GET` / `POST` | `/restaurants/:slug/cash[/open\|/movements\|/close]` | membro | Caixa: abertura, sangria e suprimento, fechamento com conferência |
+| `GET` | `/restaurants/:slug/reports/sales?from&to` | dono | Relatório de vendas do período |
+| `GET` / `PATCH` | `/restaurants/:slug/settings` | membro / dono | Dados da loja (aberta, tempos, mesas, taxa de serviço) |
+| `GET` / `POST` / `PATCH` / `DELETE` | `/restaurants/:slug/team`, `/members[/:userId]` | dono | Equipe: cadastra funcionário com usuário e senha, muda papel, remove |
+| `PUT` | `/restaurants/:slug/members/:userId/password` | dono | Define uma senha nova para o funcionário |
+| `POST` | `/restaurants/:slug/invites` | dono | Convite por link (alternativa ao cadastro direto) |
+| `GET` / `POST` | `/admin/restaurants[/:slug/enter]` | administrador | Lista e cadastra restaurantes; registra a entrada em modo suporte |
 | `GET` | `/restaurants/:slug/print-jobs` | membro | Últimos 50 jobs com o resultado por impressora |
 | `GET` | `/restaurants/:slug/agents` | membro | Agentes pareados e se estão online |
 | `POST` | `/restaurants/:slug/pairing-codes` | dono | Gera um código de pareamento |
@@ -201,7 +277,7 @@ A sessão vai num cookie `httpOnly` (navegador) ou no header `Authorization: Bea
 Exemplo com curl:
 
 ```bash
-TOKEN=$(curl -s -X POST localhost:8080/auth/login -H 'content-type: application/json' -d '{"email":"demo@cardapio.dev","password":"demo12345"}' | jq -r .token)
+TOKEN=$(curl -s -X POST localhost:8080/auth/login -H 'content-type: application/json' -d '{"login":"demo@cardapio.dev","password":"demo12345"}' | jq -r .token)
 ```
 
 ```bash
@@ -317,30 +393,39 @@ Os schemas ficam em [`packages/shared/src/protocol.ts`](packages/shared/src/prot
 
 ## Roadmap
 
-- [x] Agente com impressora virtual e de rede
-- [x] Fila SQLite, ACK, idempotência e retentativas
-- [x] Conexão WebSocket com reconexão automática
-- [x] Roteamento por setor
-- [x] API com PostgreSQL, multi-restaurante
-- [x] Pareamento do agente por código e revogação
-- [x] Cadastro, login e papéis (dono/funcionário)
-- [x] Cardápio com categorias, produtos e complementos
-- [x] Pedido público com preço calculado no servidor
-- [x] Cardápio web do cliente (mesa, retirada e delivery)
-- [x] Gerador de QR Code das mesas
-- [x] Equipe: convite por link, papéis, remoção de acesso e nova senha
-- [x] Administrador da plataforma: cadastro de restaurantes e acesso de suporte à base dos clientes
-- [x] Fotos dos produtos, logo e capa (enviadas pelo painel)
-- [ ] Taxa de entrega por bairro e horário de funcionamento
-- [x] Painel do restaurante: pedidos em tempo real, loja e impressoras
-- [x] Editor do cardápio no painel
-- [x] Pedidos em tempo real por WebSocket, com campainha e reconexão automática
-- [x] Etapas do pedido e Kanban de delivery/retirada
-- [x] PDV para a equipe lançar pedidos (balcão, telefone, mesas)
-- [x] Mesas e comandas com conta aberta e fechamento de conta
-- [x] Caixa (abertura, sangria, suprimento, fechamento com conferência) e relatórios de vendas
-- [x] Dividir a conta (várias formas de pagamento) e transferir lançamentos entre mesas e comandas
-- [ ] Painel da cozinha (KDS)
-- [ ] Impressoras USB e Bluetooth
-- [ ] Instalador `.exe` com ícone na bandeja
-- [ ] Pagamento Pix
+**Próximos passos**
+
+- Cada usuário trocar a própria senha, e fechar o cadastro público de restaurantes em produção
+- Taxa de entrega por bairro e horário de funcionamento
+- Painel da cozinha (KDS)
+- Impressoras USB e Bluetooth
+- Instalador `.exe` com ícone na bandeja
+- Pagamento Pix
+
+<details>
+<summary><strong>Já entregue</strong> (22 itens)</summary>
+
+- Agente com impressora virtual e de rede
+- Fila SQLite, ACK, idempotência e retentativas
+- Conexão WebSocket com reconexão automática
+- Roteamento por setor
+- API com PostgreSQL, multi-restaurante
+- Pareamento do agente por código e revogação
+- Cadastro, login e papéis (dono/funcionário)
+- Cardápio com categorias, produtos e complementos
+- Pedido público com preço calculado no servidor
+- Cardápio web do cliente (mesa, retirada e delivery)
+- Gerador de QR Code das mesas
+- Equipe: convite por link, papéis, remoção de acesso e nova senha
+- Administrador da plataforma: cadastro de restaurantes e acesso de suporte à base dos clientes
+- Fotos dos produtos, logo e capa (enviadas pelo painel)
+- Painel do restaurante: pedidos em tempo real, loja e impressoras
+- Editor do cardápio no painel
+- Pedidos em tempo real por WebSocket, com campainha e reconexão automática
+- Etapas do pedido e Kanban de delivery/retirada
+- PDV para a equipe lançar pedidos (balcão, telefone, mesas)
+- Mesas e comandas com conta aberta e fechamento de conta
+- Caixa (abertura, sangria, suprimento, fechamento com conferência) e relatórios de vendas
+- Dividir a conta (várias formas de pagamento) e transferir lançamentos entre mesas e comandas
+
+</details>
