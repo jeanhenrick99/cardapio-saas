@@ -8,7 +8,7 @@ export default async function PanelLayout({ children, params }: { children: Reac
   const { slug } = await params;
   const me = await getMe();
   if (!me) redirect('/login');
-  const access = await getRestaurantAccess(me, slug);
+  const access = await getRestaurantAccess(slug);
   if (!access) notFound();
   // A retaguarda é só do dono: a equipe trabalha no PDV.
   if (access.role !== 'OWNER') redirect(`/pdv/${slug}`);

@@ -8,7 +8,7 @@ export default async function PdvLayout({ children, params }: { children: React.
   const { slug } = await params;
   const me = await getMe();
   if (!me) redirect('/login');
-  const access = await getRestaurantAccess(me, slug);
+  const access = await getRestaurantAccess(slug);
   if (!access) notFound();
 
   return (
